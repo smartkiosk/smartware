@@ -34,7 +34,7 @@ module Smartware
       end
 
       def self.print(filepath)
-        @queue << filepath
+        @queue << filepath unless filepath.nil?
       end
 
       def self.test
@@ -50,7 +50,7 @@ module Smartware
                 @status[:model] = @device.model
               else
                 begin
-                  `lpr #{@queue[0]} >> #{File.expand_path(Smartware::Logging.logfile)} 2>&1` # Turn lpr-log from STDOUT to smartware
+                  `lpr #{@queue[0]}`
                   Smartware::Logging.logger.info "Printed #{@queue[0]}"
                   @queue.shift
                   sleep 5
