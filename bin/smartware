@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+
+trap 'TTIN' do
+  Thread.list.each do |thread|
+    if thread.backtrace
+      puts thread.backtrace.join("\n")
+    else
+      puts "<no backtrace available>"
+    end
+  end
+end
+
+require 'smartware/service'
+require 'dante'
+
+runner = Dante::Runner.new('smartware')
+runner.description = "Smartkiosk hardware control daemon"
+
+runner.execute do |opts|
+  begin
+    Smartware::Service.start
+  rescue => e
+    raise e if $DEBUG
+    STDERR.puts e.message
+    STDERR.puts e.backtrace.join("\n")
+    exit 1
+  end
+end
