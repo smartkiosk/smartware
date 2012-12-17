@@ -9,7 +9,7 @@ Gem::Specification.new do |gem|
   gem.authors       = ["Evgeni Sudarchikov", "Boris Staal"]
   gem.email         = ["e.sudarchikov@roundlake.ru", "boris@roundlake.ru"]
   gem.description   = %q{Smartware is the Smartkiosk hardware control daemon}
-  gem.summary       = s.description
+  gem.summary       = gem.description
   gem.homepage      = ""
 
   gem.files         = `git ls-files`.split($/)
