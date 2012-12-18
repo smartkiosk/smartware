@@ -22,6 +22,7 @@ module Smartware
       def self.configure!(port, driver)
         @device = Smartware::Driver::CashAcceptor.const_get(driver).new(port)
         @session.kill if @session and @session.alive?
+		@commands = %w(monitor)
         @device.cancel_accept
         @session = self.start_poll!
         Smartware::Logging.logger.info "Cash acceptor monitor started"
