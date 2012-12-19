@@ -19,10 +19,12 @@ module Smartware
       #
       # (re)configure device
       #
-      def self.configure!(port, driver)
-        @device = Smartware::Driver::CashAcceptor.const_get(driver).new(port)
+      def self.configure!(port=nil, driver=nil)
+        @device = Smartware::Driver::CashAcceptor.const_get(
+            Smartware::Service.config['cash_acceptor_driver']).new(
+            Smartware::Service.config['cash_acceptor_port'])
         @session.kill if @session and @session.alive?
-		@commands = %w(monitor)
+		    @commands = %w(monitor)
         @device.cancel_accept
         @session = self.start_poll!
         Smartware::Logging.logger.info "Cash acceptor monitor started"
@@ -112,7 +114,7 @@ module Smartware
 
                   @commands.shift
                 when 'monitor'
-                  @status[:error] = @device.error
+                  @status[:error] = @device.error || ''
                   @status[:model] = @device.model
                   @status[:cassette] = @device.cassette?
                   @commands.shift
@@ -124,6 +126,7 @@ module Smartware
           end
         end
 
+      self.configure!
     end
   end
 end

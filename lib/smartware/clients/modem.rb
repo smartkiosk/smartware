@@ -5,11 +5,14 @@ module Smartware
 
     module Modem
 
-      def self.configure(port, driver)
-        DRb.start_service
-        @device = DRbObject.new_with_uri('druby://localhost:6002')
-        @device.configure!(port, driver)
-      end
+      DRb.start_service
+      @device = DRbObject.new_with_uri('druby://localhost:6002')
+
+      #def self.configure(port, driver)
+      #  DRb.start_service
+      #  @device = DRbObject.new_with_uri('druby://localhost:6002')
+      #  @device.configure!(port, driver)
+      #end
 
       def self.error
         @device.error

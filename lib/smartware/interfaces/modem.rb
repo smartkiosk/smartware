@@ -1,5 +1,5 @@
 require 'drb'
-require 'smartware/drivers/modem/standart'
+require 'smartware/drivers/modem/standard'
 require 'smartware/drivers/modem/dummy'
 
 module Smartware
@@ -10,11 +10,14 @@ module Smartware
       @configured = false
       @status = {}
 
-      def self.configure!(port, driver)
-        @device = Smartware::Driver::Modem.const_get(driver).new(port)
+      def self.configure!(port=nil, driver=nil)
+        @device = Smartware::Driver::Modem.const_get(
+            Smartware::Service.config['modem_driver']).new(
+            Smartware::Service.config['modem_port'])
         @session.kill if @session
         @session = self.poll_status!
         @configured = true
+        Smartware::Logging.logger.info 'Modem monitor started'
         @status = {}
       rescue => e
         Smartware::Logging.logger.error e.message
@@ -70,8 +73,9 @@ module Smartware
             end
           end
         end
-    end
 
+      self.configure!
+    end
   end
 end
 

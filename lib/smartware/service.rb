@@ -1,11 +1,19 @@
 require 'thread'
+require 'yaml'
 require 'smartware/logging'
 
 module Smartware
   module Service
-    def self.start
+
+    def self.config
+      @config
+    end
+
+    def self.start(config_file)
       $stdout.sync = true
       
+      @config = YAML.load File.read(File.expand_path(config_file))
+
       Smartware::Logging.logger = Logger.new($stdout)
       Smartware::Logging.logger.info "Smartware started at #{Time.now}"
 
@@ -24,6 +32,7 @@ module Smartware
       Smartware::Logging.logger.info "Smartware shutdown at #{Time.now}"
       exit 0
     end
+
   end
 end
 

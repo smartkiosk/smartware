@@ -5,11 +5,8 @@ module Smartware
 
     module CashAcceptor
 
-      def self.configure(port, driver)
-        DRb.start_service
-        @device = DRbObject.new_with_uri('druby://localhost:6001')
-        @device.configure!(port, driver)
-      end
+      DRb.start_service
+      @device = DRbObject.new_with_uri('druby://localhost:6001')
 
       def self.open(limit_min = nil, limit_max = nil)
         @device.open_session(limit_min, limit_max)

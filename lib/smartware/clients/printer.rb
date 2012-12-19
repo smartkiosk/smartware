@@ -5,11 +5,14 @@ module Smartware
 
     module Printer
 
-      def self.configure(port, driver)
-        DRb.start_service
-        @device = DRbObject.new_with_uri('druby://localhost:6005')
-        @device.configure!(port, driver)
-      end
+      DRb.start_service
+      @device = DRbObject.new_with_uri('druby://localhost:6005')
+
+      #def self.configure(port, driver)
+      #  DRb.start_service
+      #  @device = DRbObject.new_with_uri('druby://localhost:6005')
+      #  @device.configure!(port, driver)
+      #end
 
       def self.error
         @device.error

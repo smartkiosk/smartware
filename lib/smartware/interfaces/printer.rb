@@ -11,8 +11,10 @@ module Smartware
       @status = {:error => ''}
       @queue = []
 
-      def self.configure!(port, driver)
-        @device = Smartware::Driver::Printer.const_get(driver).new(port)
+      def self.configure!(port=nil, driver=nil)
+        @device = Smartware::Driver::Printer.const_get(
+            Smartware::Service.config['printer_driver']).new(
+            Smartware::Service.config['printer_port'])
         @session.kill if @session and @session.alive?
         @session = self.start_monitor!
         Smartware::Logging.logger.info 'Printer monitor started'
@@ -64,6 +66,7 @@ module Smartware
           end
         end
 
+      self.configure!
     end
   end
 end
