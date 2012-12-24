@@ -45,28 +45,29 @@ module Smartware
         # Don`t call with method synchronously from app, method waits USSD answer 3 sec,
         # Use some scheduler and buffer for balance value
         #
-        def ussd(code="*100#")
+        def ussd(code="*100#", use_gets = false)
           port = SerialPort.new(@port, 115200, 8, 1, SerialPort::NONE)
           port.read_timeout = 3000
           port.write "AT+CUSD=1,\"#{code}\",15\r\n"
-          ussd_body = port.read.split(/[\r\n]+/).last.split(",")[1].gsub('"','') # Parse USSD message body
+          result = use_gets ? port.gets : port.read
+          # Parse USSD message body
+          ussd_body = result.split(/[\r\n]+/).last.split(",")[1].gsub('"','')
           port.close
-          ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join # Encode USSD message from broken ucs2 to utf-8
+          # Encode USSD message from broken ucs2 to utf-8
+          ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join
         rescue
           -1
         end
 
-        private
-          def send cmd
-            @sp.write "#{ cmd }\r\n"
-            answer = ''
-            while IO.select [@sp], [], [], 0.25
-              chr = @sp.getc.chr
-              answer << chr
-            end
-            answer.split(/[\r\n]+/)
+        def send(cmd, read_timeout = 0.25)
+          @sp.write "#{ cmd }\r\n"
+          answer = ''
+          while IO.select [@sp], [], [], read_timeout
+            chr = @sp.getc.chr
+            answer << chr
           end
-
+          answer.split(/[\r\n]+/)
+        end
       end
 
     end

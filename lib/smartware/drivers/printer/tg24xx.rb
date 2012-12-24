@@ -1,4 +1,8 @@
 # coding: utf-8
+#
+# Custom tg2480h printer functions
+#
+
 require 'serialport'
 
 module Smartware
