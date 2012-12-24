@@ -7,10 +7,17 @@ module Smartware
 
       class Standard
 
+        ERRORS = {
+            "-1" => -1, # invalid device answer
+            "10" => 10, # invalid ussd answer
+            "11" => 11, # invalid ussd answer size
+            "12" => 12, # invalid ussd body answer size
+            "20" => 20, # invalid modem model
+            "21" => 21, # invalid modem signal level
+        }
+
         def initialize(port)
-          # @port Class variable needs for ussd request
-          @port = port
-          @sp = SerialPort.new(@port, 115200, 8, 1, SerialPort::NONE)
+          @sp = SerialPort.new(port, 115200, 8, 1, SerialPort::NONE)
         end
 
         def error
@@ -18,14 +25,12 @@ module Smartware
         end
 
         def model
-          res = send 'ATI' rescue -1
-          return -1 unless res.last == "OK"
-
+          res = send 'ATI'
           res.shift
           res.pop
           res.join(' ')
         rescue
-          -1
+          ERRORS["20"]
         end
 
         #
@@ -33,30 +38,30 @@ module Smartware
         #
         def signal_level
           res = send 'AT+CSQ'
-          return -1 if res.last != "OK"
           value = res[1].gsub("+CSQ: ",'').split(',')[0].to_i
           "#{(-113 + value * 2)} dbm"
         rescue
-          -1
+          ERRORS["21"]
         end
 
         #
         # Method send ussd to operator and return only valid answer body
-        # Don`t call with method synchronously from app, method waits USSD answer 3 sec,
+        # Returns modem balance by default, it works for MTS and Megafon, use *102# for Beeline
+        # Do not call with method synchronously from app, method waits USSD answer some time,
         # Use some scheduler and buffer for balance value
         #
-        def ussd(code="*100#", use_gets = false)
-          port = SerialPort.new(@port, 115200, 8, 1, SerialPort::NONE)
-          port.read_timeout = 3000
-          port.write "AT+CUSD=1,\"#{code}\",15\r\n"
-          result = use_gets ? port.gets : port.read
-          # Parse USSD message body
-          ussd_body = result.split(/[\r\n]+/).last.split(",")[1].gsub('"','')
+        # Valid uss answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
+        #
+        def ussd(code="*100#")
+          res = self.send "AT+CUSD=1,\"#{code}\",15\r\n"
+          return ERRORS["11"] unless res.size >= 3
+          return ERRORS["12"] if res[1].size < 10 # Check valid ussd answer by length
+
+          ussd_body = res[1].split(",")[1].gsub('"','') # Parse USSD message body
           port.close
-          # Encode USSD message from broken ucs2 to utf-8
-          ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join
+          ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join # Encode USSD message from broken ucs2 to utf-8
         rescue
-          -1
+          ERRORS["10"]
         end
 
         def send(cmd, read_timeout = 0.25)
@@ -66,7 +71,9 @@ module Smartware
             chr = @sp.getc.chr
             answer << chr
           end
-          answer.split(/[\r\n]+/)
+          res = answer.split(/[\r\n]+/)
+          return ERRORS["-1"] unless res.last == "OK"
+          res
         end
       end
 
