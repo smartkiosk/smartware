@@ -50,7 +50,7 @@ module Smartware
         # Do not call with method synchronously from app, method waits USSD answer some time,
         # Use some scheduler and buffer for balance value
         #
-        # Valid uss answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
+        # Valid ussd answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
         #
         def ussd(code="*100#")
           res = self.send "AT+CUSD=1,\"#{code}\",15\r\n"
