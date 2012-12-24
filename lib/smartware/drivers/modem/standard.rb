@@ -49,7 +49,7 @@ module Smartware
           port = SerialPort.new(@port, 115200, 8, 1, SerialPort::NONE)
           port.read_timeout = 3000
           port.write "AT+CUSD=1,\"#{code}\",15\r\n"
-          ussd_body = port.read.split(/[\r\n]+/).last.split(",")[1].gsub('"','') # Get only USSD message body
+          ussd_body = port.read.split(/[\r\n]+/).last.split(",")[1].gsub('"','') # Parse USSD message body
           port.close
           ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join # Encode USSD message from broken ucs2 to utf-8
         rescue

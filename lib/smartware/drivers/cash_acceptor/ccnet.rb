@@ -1,4 +1,7 @@
 # coding: utf-8
+#
+# CCNET protocol driver for CashCode bill validator
+#
 require 'serialport'
 
 module Smartware

@@ -45,22 +45,6 @@ module Smartware
         @status[:signal_level]
       end
 
-      def self.d_model
-        @device.model
-      end
-
-      def self.d_signal
-        @device.signal_level
-      end
-
-      def self.d_balance
-        @device.ussd
-      end
-
-      def self.d_stop
-        @session.kill
-      end
-
       private
         def self.poll_status!
           t = Thread.new do
