@@ -53,6 +53,7 @@ module Smartware
         # Valid ussd answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
         #
         def ussd(code="*100#")
+          self.send "AT"
           res = self.send "AT+CUSD=1,\"#{code}\",15"
           unless res[1][0..4] == "+CUSD"
             @error = ERRORS["11"]
@@ -63,6 +64,7 @@ module Smartware
           ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
         rescue
           @error = ERRORS["10"]
+          return false
         end
 
         def send(cmd, read_timeout = 0.25)
