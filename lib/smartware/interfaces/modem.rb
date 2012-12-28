@@ -52,7 +52,7 @@ module Smartware
               @status[:signal_level] = @device.signal_level
               @status[:model]   = @device.model
               @status[:error]   = @device.error
-              @status[:balance] = @device.ussd('*100#')
+              @status[:balance] = @device.balance
               sleep 30
             end
           end

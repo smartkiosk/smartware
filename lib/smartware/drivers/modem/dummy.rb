@@ -31,6 +31,10 @@ module Smartware
           "#{rand(90)*100+rand(9)} " + %w(руб. dollars тэньге).sample
         end
 
+        def balance
+          ussd
+        end
+
       end
 
     end
