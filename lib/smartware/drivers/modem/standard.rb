@@ -60,9 +60,7 @@ module Smartware
           end
 
           ussd_body = res[1].split(",")[1].gsub('"','') # Parse USSD message body
-          result = ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
-          port.close
-          result
+          ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
         rescue
           @error = ERRORS["10"]
         end
