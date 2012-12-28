@@ -52,13 +52,6 @@ module Smartware
         #
         # Valid ussd answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
         #
-        def balance
-          loop do
-            break if @balance = ussd('*100#')
-            sleep 0.5
-          end
-        end
-
         def ussd(code="*100#")
           res = self.send "AT+CUSD=1,\"#{code}\",15"
           unless res[1][0..4] == "+CUSD"
