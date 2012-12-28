@@ -54,7 +54,7 @@ module Smartware
         #
         def ussd(code="*100#")
           res = self.send "AT+CUSD=1,\"#{code}\",15\r\n"
-          return ERRORS["11"] unless res.size >= 3
+          return ERRORS["11"] if res.size < 3
 
           ussd_body = res[1].split(",")[1].gsub('"','') # Parse USSD message body
           result = ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join # Encode USSD message from broken ucs2 to utf-8
