@@ -21,7 +21,7 @@ module Smartware
         end
 
         def error
-          false
+          @error ||= false
         end
 
         def model
@@ -30,7 +30,7 @@ module Smartware
           res.pop
           res.join(' ')
         rescue
-          ERRORS["20"]
+          @error = ERRORS["20"]
         end
 
         #
@@ -41,7 +41,7 @@ module Smartware
           value = res[1].gsub("+CSQ: ",'').split(',')[0].to_i
           "#{(-113 + value * 2)} dbm"
         rescue
-          ERRORS["21"]
+          @error = ERRORS["21"]
         end
 
         #
@@ -53,15 +53,18 @@ module Smartware
         # Valid ussd answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
         #
         def ussd(code="*100#")
-          res = self.send "AT+CUSD=1,\"#{code}\",15\r\n"
-          return ERRORS["11"] if res.size < 3
+          res = self.send "AT+CUSD=1,\"#{code}\",15"
+          unless res[1][0..4] == "+CUSD"
+            @error = ERRORS["11"]
+            return false
+          end
 
           ussd_body = res[1].split(",")[1].gsub('"','') # Parse USSD message body
-          result = ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join # Encode USSD message from broken ucs2 to utf-8
+          result = ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
           port.close
           result
         rescue
-          ERRORS["10"]
+          @error = ERRORS["10"]
         end
 
         def send(cmd, read_timeout = 0.25)
