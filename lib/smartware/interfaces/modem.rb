@@ -49,12 +49,13 @@ module Smartware
         def self.poll_status!
           t = Thread.new do
             loop do
+              @status = {}
               @status[:signal_level] = @device.signal_level
-              @status[:model]   = @device.model
-              @status[:error]   = @device.error
+              @status[:model] = @device.model
+              @status[:error] = @device.error
 
               balance = @device.ussd("*100#")
-              @status[:balance] = balance unless balance
+              @status[:balance] = balance if balance
               sleep 5
             end
           end
