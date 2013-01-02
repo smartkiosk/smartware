@@ -54,23 +54,20 @@ module Smartware
         # Valid ussd answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
         #
         def ussd(code="*100#")
-          res = self.send "AT+CUSD=1,\"#{code}\",15"
-          ussd_body = res[1].split(",")[1].gsub('"','') # Parse USSD message body
-          ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
-        rescue
-          @error = ERRORS["10"]
-          return false
+          sleep 3
+          res = self.send("AT+CUSD=1,\"*100#\",15").reject{|i| i[0..4] != '+CUSD'}[0]
+          if res
+            ussd_body = res.split(",")[1].gsub('"','') # Parse USSD message body
+            ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
+          else
+            @error = ERRORS["10"]
+            false
+          end
         end
 
         def send(cmd)
-          read_port @sp # Port clear
-
-          @sp.write "AT\r\n"
-          check_ability = read_port @sp
-          return ERRORS["-1"] unless check_ability == ["AT", "OK"]
-
           @sp.write "#{ cmd }\r\n"
-          answer = read_port @sp
+          read_port(@sp)
         end
 
         def read_port(io, read_timeout = 0.25)
