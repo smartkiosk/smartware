@@ -10,8 +10,6 @@ module Smartware
         ERRORS = {
             "-1" => -1, # invalid device answer
             "10" => 10, # invalid ussd answer
-            "11" => 11, # invalid ussd answer size
-            "12" => 12, # invalid ussd body answer size
             "20" => 20, # invalid modem model
             "21" => 21, # invalid modem signal level
         }
@@ -54,7 +52,6 @@ module Smartware
         # Valid ussd answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
         #
         def ussd(code="*100#")
-          sleep 3
           res = self.send("AT+CUSD=1,\"*100#\",15").reject{|i| i[0..4] != '+CUSD'}[0]
           if res
             ussd_body = res.split(",")[1].gsub('"','') # Parse USSD message body
@@ -66,6 +63,7 @@ module Smartware
         end
 
         def send(cmd)
+          @error = false
           @sp.write "#{ cmd }\r\n"
           read_port(@sp)
         end

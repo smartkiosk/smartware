@@ -30,7 +30,7 @@ module Smartware
       end
 
       def self.error
-        @status[:error] || ''
+        @status[:error]
       end
 
       def self.model
@@ -51,12 +51,14 @@ module Smartware
             loop do
               @status = {}
               @status[:signal_level] = @device.signal_level
+              sleep 1
               @status[:model] = @device.model
-              @status[:error] = @device.error
-
+              sleep 1
+              @status[:error] = @device.error || ''
+              sleep 3
               balance = @device.ussd("*100#")
               @status[:balance] = balance if balance
-              sleep 5
+              sleep 1
             end
           end
         end
