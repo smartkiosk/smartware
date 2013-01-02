@@ -18,6 +18,7 @@ module Smartware
 
         def initialize(port)
           @sp = SerialPort.new(port, 115200, 8, 1, SerialPort::NONE)
+          @sp.read_timeout = 100
         end
 
         def error
@@ -54,11 +55,6 @@ module Smartware
         #
         def ussd(code="*100#")
           res = self.send "AT+CUSD=1,\"#{code}\",15"
-          unless res[1][0..4] == "+CUSD"
-            @error = ERRORS["11"]
-            return false
-          end
-
           ussd_body = res[1].split(",")[1].gsub('"','') # Parse USSD message body
           ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
         rescue
@@ -66,16 +62,25 @@ module Smartware
           return false
         end
 
-        def send(cmd, read_timeout = 0.25)
+        def send(cmd)
+          read_port @sp # Port clear
+
+          @sp.write "AT\r\n"
+          check_ability = read_port @sp
+          return ERRORS["-1"] unless check_ability == ["AT", "OK"]
+
           @sp.write "#{ cmd }\r\n"
+          answer = read_port @sp
+        end
+
+        def read_port(io, read_timeout = 0.25)
+          return ERRORS["-1"] unless io
           answer = ''
-          while IO.select [@sp], [], [], read_timeout
-            chr = @sp.getc.chr
+          while IO.select [io], [], [], read_timeout
+            chr = io.getc.chr
             answer << chr
           end
-          res = answer.split(/[\r\n]+/)
-          return ERRORS["-1"] unless res.last == "OK"
-          res
+          answer.split(/[\r\n]+/)
         end
       end
 

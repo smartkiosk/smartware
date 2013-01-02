@@ -27,7 +27,6 @@ module Smartware
         # Use some scheduler and buffer for balance value
         #
         def ussd(code="*100#")
-          sleep 3
           "#{rand(90)*100+rand(9)} " + %w(руб. dollars тэньге).sample
         end
 
