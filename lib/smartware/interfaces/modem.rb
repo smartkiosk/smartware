@@ -49,7 +49,6 @@ module Smartware
         def self.poll_status!
           t = Thread.new do
             loop do
-              @status = {}
               @status[:signal_level] = @device.signal_level
               sleep 1
               @status[:model] = @device.model
@@ -58,7 +57,7 @@ module Smartware
               sleep 3
               balance = @device.ussd("*100#")
               @status[:balance] = balance if balance
-              sleep 1
+              sleep 10
             end
           end
         end
