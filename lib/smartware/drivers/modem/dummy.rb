@@ -10,7 +10,7 @@ module Smartware
         end
 
         def model
-          'AT Modem'
+          'Generic modem'
         end
 
         def error

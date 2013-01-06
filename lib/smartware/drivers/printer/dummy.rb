@@ -14,7 +14,7 @@ module Smartware
         end
 
         def model
-          'Dummy printer'
+          'Generic printer'
         end
 
       end

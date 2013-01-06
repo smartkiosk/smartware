@@ -10,7 +10,7 @@ module Smartware
         end
 
         def model
-          "Dummy cash acceptor v1.0"
+          "Generic cash acceptor"
         end
 
         def cassette?
