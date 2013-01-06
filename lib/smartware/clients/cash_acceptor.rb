@@ -20,6 +20,10 @@ module Smartware
         @device.status
       end
 
+      def self.error
+        @device.error
+      end
+
       def self.model
         @device.model
       end

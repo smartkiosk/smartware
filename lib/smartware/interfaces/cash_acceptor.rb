@@ -58,6 +58,10 @@ module Smartware
         @configured
       end
 
+      def self.error
+        @status[:error] || ''
+      end
+
       def self.status
         @status
       end

@@ -41,6 +41,7 @@ module Smartware
           "#{(-113 + value * 2)} dbm"
         rescue
           @error = ERRORS["21"]
+          return false
         end
 
         #
