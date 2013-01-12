@@ -13,6 +13,10 @@ module Smartware
           'Generic modem'
         end
 
+        def version
+          '8 Ultimate'
+        end
+
         def error
           false
         end

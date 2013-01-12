@@ -6,7 +6,7 @@ module Smartware
     module Modem
 
       class Standard
-        attr_reader :error, :model, :balance
+        attr_reader :error, :model, :balance, :version
 
         def initialize(config)
           @config = config
@@ -16,6 +16,7 @@ module Smartware
           @status_channel = nil
           @info_requested = false
           @model = "GSM modem"
+          @version = ""
           @signal = "+CSQ: 99,99"
           @ussd_interval = 0
           @balance = nil
@@ -85,12 +86,12 @@ module Smartware
             modem_works = nil
 
             begin
-              @chatter.command("+CGMM;+CSQ", 3) do |resp|
+              @chatter.command("+CGMM;+CGMR;+CSQ", 3) do |resp|
                 modem_works = resp.success?
 
                 if modem_works
                   resp.response.reject! &:empty?
-                  @model, @signal = resp.response
+                  @model, @version, @signal = resp.response
                 end
               end
 

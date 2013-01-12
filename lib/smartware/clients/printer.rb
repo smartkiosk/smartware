@@ -20,6 +20,12 @@ module Smartware
         'No device'
       end
 
+      def self.version
+        @device.version
+      rescue => e
+        'No device'
+      end
+
       def self.test
         @device.test
       rescue => e

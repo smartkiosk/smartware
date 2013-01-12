@@ -35,6 +35,10 @@ module Smartware
         @status[:model]
       end
 
+      def self.version
+        @status[:version]
+      end
+
       def self.print(filepath)
         @queue << filepath unless filepath.nil?
       end
@@ -50,6 +54,7 @@ module Smartware
               if @queue.empty?
                 @status[:error] = @device.error || ''
                 @status[:model] = @device.model
+                @status[:version] = @device.version
               else
                 begin
                   `lpr #{@queue[0]}`

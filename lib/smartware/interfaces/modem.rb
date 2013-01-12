@@ -38,6 +38,10 @@ module Smartware
         @status[:model]
       end
 
+      def self.version
+        @status[:version]
+      end
+
       def self.balance
         @status[:balance]
       end
@@ -55,6 +59,7 @@ module Smartware
 
                 @status[:signal_level] = @device.signal_level
                 @status[:model] = @device.model
+                @status[:version] = @device.version
                 @status[:error] = @device.error || ''
                 @status[:balance] = @device.balance
               end

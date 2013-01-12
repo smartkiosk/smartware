@@ -84,6 +84,11 @@ module Smartware
           -1
         end
 
+        def version
+          # TODO: implement this
+          "not implemented"
+        end
+
         def error
           res = poll
           ack

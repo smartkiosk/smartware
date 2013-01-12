@@ -16,6 +16,10 @@ module Smartware
         @device.model
       end
 
+      def self.version
+        @device.version
+      end
+
       def self.balance
         @device.balance
       end

@@ -13,6 +13,11 @@ module Smartware
           "Generic cash acceptor"
         end
 
+        def version
+          # TODO: implement this
+          "not implemented"
+        end
+
         def cassette?
           true
         end

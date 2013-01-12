@@ -28,6 +28,10 @@ module Smartware
         @device.model
       end
 
+      def self.version
+        @device.version
+      end
+
       def self.banknotes
         @device.banknotes
       end

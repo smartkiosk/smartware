@@ -70,6 +70,10 @@ module Smartware
         @status[:model]
       end
 
+      def self.version
+        @status[:version]
+      end
+
       def self.cashsum
         @banknotes.inject(0){ |result, (key, value)| result + key.to_i*value.to_i }
       end
@@ -120,6 +124,7 @@ module Smartware
                 when 'monitor'
                   @status[:error] = @device.error || ''
                   @status[:model] = @device.model
+                  @status[:version] = @device.version
                   @status[:cassette] = @device.cassette?
                   @commands.shift
                 else
