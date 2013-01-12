@@ -48,7 +48,7 @@ module Smartware
 
         def ussd(mode, string = nil, dcs = nil)
           if mode != "0"
-            @logger.warn "USSD completed with mode #{mode}, expected 0"
+            Smartware::Logging.logger.warn "USSD completed with mode #{mode}, expected 0"
           end
 
           if string
@@ -76,6 +76,7 @@ module Smartware
               @chatter.subscribe "CUSD", self
               @error = false
               @ussd_interval = 0
+              Smartware::Logging.logger.info "modem ready"
             rescue => e
               close_modem "unable to open modem: #{e}"
             end
