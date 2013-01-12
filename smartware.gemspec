@@ -19,5 +19,5 @@ Gem::Specification.new do |gem|
 
   gem.add_dependency 'serialport'
   gem.add_dependency 'dante'
-
+  gem.add_dependency 'cmux'
 end

@@ -1,19 +1,20 @@
 require 'drb'
-require 'smartware/drivers/modem/standard'
 require 'smartware/drivers/modem/dummy'
+require 'smartware/drivers/modem/standard'
 
 module Smartware
   module Interface
 
     module Modem
-
       @configured = false
       @status = {}
 
-      def self.configure!(port=nil, driver=nil)
+      def self.configure!
+        Smartware::Logging.logger.debug "Creating modem"
         @device = Smartware::Driver::Modem.const_get(
             Smartware::Service.config['modem_driver']).new(
-            Smartware::Service.config['modem_port'])
+            Smartware::Service.config['modem_config'])
+        Smartware::Logging.logger.debug "Starting modem"
         @session.kill if @session
         @session = self.poll_status!
         @configured = true
@@ -48,16 +49,18 @@ module Smartware
       private
         def self.poll_status!
           t = Thread.new do
-            loop do
-              @status[:signal_level] = @device.signal_level
-              sleep 1
-              @status[:model] = @device.model
-              sleep 1
-              @status[:error] = @device.error || ''
-              sleep 3
-              balance = @device.ussd("*100#")
-              @status[:balance] = balance if balance
-              sleep 10
+            begin
+              loop do
+                @device.tick
+
+                @status[:signal_level] = @device.signal_level
+                @status[:model] = @device.model
+                @status[:error] = @device.error || ''
+                @status[:balance] = @device.balance
+              end
+            rescue => e
+              Smartware::Logging.logger.error e.message
+              Smartware::Logging.logger.error e.backtrace.join("\n")
             end
           end
         end

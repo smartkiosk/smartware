@@ -1,85 +1,211 @@
 # coding: utf-8
-require 'serialport'
+require 'cmux'
 
 module Smartware
   module Driver
     module Modem
 
       class Standard
+        attr_reader :error, :model, :balance
 
-        ERRORS = {
-            "-1" => -1, # invalid device answer
-            "10" => 10, # invalid ussd answer
-            "20" => 20, # invalid modem model
-            "21" => 21, # invalid modem signal level
-        }
-
-        def initialize(port)
-          @sp = SerialPort.new(port, 115200, 8, 1, SerialPort::NONE)
-          @sp.read_timeout = 100
+        def initialize(config)
+          @config = config
+          @state = :closed
+          @error = "not initialized yet"
+          @mux = nil
+          @status_channel = nil
+          @info_requested = false
+          @model = "GSM modem"
+          @signal = "+CSQ: 99,99"
+          @ussd_interval = 0
+          @balance = nil
+          @ppp_state = :stopped
+          @ppp_pid = nil
         end
 
-        def error
-          @error ||= false
-        end
-
-        def model
-          res = send 'ATI'
-          res.shift
-          res.pop
-          res.join(' ')
-        rescue
-          @error = ERRORS["20"]
-        end
-
-        #
-        # Returns signal level in dbm
-        #
         def signal_level
-          res = send 'AT+CSQ'
-          value = res[1].gsub("+CSQ: ",'').split(',')[0].to_i
+          value = @signal.gsub("+CSQ: ",'').split(',')[0].to_i
           "#{(-113 + value * 2)} dbm"
-        rescue
-          @error = ERRORS["21"]
-          return false
         end
 
-        #
-        # Method send ussd to operator and return only valid answer body
-        # Returns modem balance by default, it works for MTS and Megafon, use *102# for Beeline
-        # Do not call with method synchronously from app, method waits USSD answer some time,
-        # Use some scheduler and buffer for balance value
-        #
-        # Valid ussd answer sample: ["", "+CUSD: 2,\"003100310035002C003000300440002E00320031002E00330031002004310430043B002E0020\",72", "OK"]
-        #
-        def ussd(code="*100#")
-          res = self.send("AT+CUSD=1,\"*100#\",15").reject{|i| i[0..4] != '+CUSD'}[0]
-          if res
-            ussd_body = res.split(",")[1].gsub('"','') # Parse USSD message body
-            ussd_body.scan(/\w{4}/).map{|i| [i.hex].pack("U") }.join.strip # Encode USSD message from broken ucs2 to utf-8
+        def tick
+          begin
+            modem_tick
+            ppp_tick
+
+            wait_for_event
+          rescue => e
+            Smartware::Logging.logger.error "uncatched exception in modem monitor: #{e}"
+          end
+        end
+
+        def unsolicited(type, fields)
+          case type
+          when "CUSD"
+            ussd *fields
+          end
+        end
+
+        def ussd(mode, string = nil, dcs = nil)
+          if mode != "0"
+            @logger.warn "USSD completed with mode #{mode}, expected 0"
+          end
+
+          if string
+            @balance = string.scan(/\w{4}/)
+            .map! { |i| [ i.hex ].pack("U") }
+            .join
+            .strip
           else
-            @error = ERRORS["10"]
-            false
+            @balance = nil
           end
         end
 
-        def send(cmd)
-          @error = false
-          @sp.write "#{ cmd }\r\n"
-          read_port(@sp)
+        private
+
+        def modem_tick
+          case @state
+          when :closed
+            Smartware::Logging.logger.info "trying to open modem"
+
+            begin
+              @mux = CMUX::MUX.new @config["device"]
+              @state = :open
+              @status_channel = @mux.allocate(@config["status_channel"]).open
+              @chatter = CMUX::ModemChatter.new @status_channel
+              @chatter.subscribe "CUSD", self
+              @error = false
+              @ussd_interval = 0
+            rescue => e
+              close_modem "unable to open modem: #{e}"
+            end
+
+          when :open
+            modem_works = nil
+
+            begin
+              @chatter.command("+CGMM;+CSQ", 3) do |resp|
+                modem_works = resp.success?
+
+                if modem_works
+                  resp.response.reject! &:empty?
+                  @model, @signal = resp.response
+                end
+              end
+
+              while modem_works.nil?
+                CMUX::ModemChatter.poll [ @chatter ]
+              end
+            rescue => e
+              modem_works = false
+            end
+
+            if modem_works
+              if @config.include?("balance_ussd") && @ussd_interval == 0
+                @ussd_interval = @config["balance_interval"]
+                begin
+                  @chatter.command("+CUSD=1,\"#{@config["balance_ussd"]}\",15", 1)
+                rescue => e
+                  close_modem "USSD request failed: #{e}"
+                end
+              else
+                @ussd_interval -= 1
+              end
+            else
+              close_modem "modem is not responding"
+            end
+          end
         end
 
-        def read_port(io, read_timeout = 0.25)
-          return ERRORS["-1"] unless io
-          answer = ''
-          while IO.select [io], [], [], read_timeout
-            chr = io.getc.chr
-            answer << chr
+        def ppp_tick
+          case @ppp_state
+          when :stopped
+            if @state == :open
+              Smartware::Logging.logger.info "trying to start pppd"
+              begin
+                @ppp_channel = @mux.allocate @config["ppp_channel"]
+
+                @ppp_pid = Process.spawn "smartware-ppp-helper",
+                    @ppp_channel.device,
+                    @config["apn"]
+                @ppp_state = :running
+
+                Smartware::Logging.logger.info "started pppd, PID #{@ppp_pid}"
+                Smartware::ProcessManager.track @ppp_pid, method(:ppp_died)
+
+              rescue => e
+                begin
+                  @ppp_channel.close
+                rescue
+                end
+
+                @ppp_channel = nil
+                @ppp_pid = nil
+                @ppp_state = :stopped
+
+                Smartware::Logging.logger.warn "cannot start pppd: #{e.to_s}"
+              end
+            end
+
+          when :running
+            if @ppp_pid.nil?
+              Smartware::Logging.logger.warn "pppd died"
+              begin
+                @ppp_channel.close
+              rescue
+              end
+
+              @ppp_channel = nil
+              @ppp_state = :stopped
+            end
           end
-          answer.split(/[\r\n]+/)
+        end
+
+        def ppp_died(pid)
+          # will be handled by the event loop a moment later
+          @ppp_pid = nil
+        end
+
+        def wait_for_event
+          if @state == :open
+            begin
+              CMUX::ModemChatter.poll [ @chatter ], @config["poll_interval"]
+            rescue => e
+              close_modem "modem poll failed: #{e}"
+            end
+          else
+            sleep @config["poll_interval"]
+          end
+
+        end
+
+        def close_modem(reason)
+          Smartware::Logging.logger.warn "#{reason}"
+
+          @error = reason
+
+          begin
+            @mux.close
+          rescue
+          end
+
+          begin
+            @chatter.unsubscribe "CUSD", self
+          rescue
+          end
+
+          @info_requested = false
+          @mux = nil
+          @chatter = nil
+          @status_channel = nil
+          @ppp_state = :stopped
+          unless @ppp_pid.nil?
+            Smartware::ProcessManager.untrack @ppp_pid
+            @ppp_pid = nil # PPP will die by itself, because we closed the mux.
+          end
+          @state = :closed
         end
       end
-
     end
   end
 end

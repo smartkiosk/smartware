@@ -2,12 +2,19 @@
 
 trap 'TTIN' do
   Thread.list.each do |thread|
+    puts "Thread #{thread}:"
     if thread.backtrace
       puts thread.backtrace.join("\n")
     else
       puts "<no backtrace available>"
     end
   end
+end
+
+require "rubygems"
+begin
+  require "bundler/setup"
+rescue
 end
 
 require 'smartware/service'

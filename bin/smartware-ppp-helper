@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+
+require "rubygems"
+require "bundler/setup"
+require "cmux"
+
+device, apn = ARGV
+
+io = CMUX::IO::open_tty device
+begin
+  chatter = CMUX::ModemChatter.new io
+
+  complete = false
+
+  chatter.command("+CGDCONT=1,\"IP\",\"#{apn}\";D*99***1#", 30) do |resp|
+    if resp.failure?
+      warn "GPRS activation failed: #{resp.error}"
+
+      exit 1
+    else
+      complete = true
+    end
+  end
+
+  until complete
+    CMUX::ModemChatter.poll [ chatter ]
+  end
+ensure
+  io.close
+end
+
+Process.exec "/usr/sbin/pppd",
+              device, "115200",
+              "nodetach", "file", "/etc/ppp/options",
+              pgroup: true,
+              in: :close,
+              out: :close,
+              err: :close,
+              close_others: true

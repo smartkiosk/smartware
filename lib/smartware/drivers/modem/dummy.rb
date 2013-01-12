@@ -5,8 +5,8 @@ module Smartware
 
       class Dummy
 
-        def initialize(port)
-          @port = port
+        def initialize(config)
+          @port = config
         end
 
         def model
@@ -22,10 +22,13 @@ module Smartware
           "#{res} dbm"
         end
 
-        def ussd(code="*100#")
+        def balance
           "Сервис временно недоступен"
         end
 
+        def tick
+          sleep 10
+        end
       end
 
     end
