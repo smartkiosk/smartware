@@ -19,6 +19,7 @@ module Smartware
         @configured = true
       rescue => e
         @configured = false
+        Smartware::Logging.logger.error "Printer initialization failed: #{e.to_s}"
       end
 
       def self.configured?
@@ -49,20 +50,20 @@ module Smartware
         def self.start_monitor!
           t = Thread.new do
             loop do
-              if @queue.empty?
-                @status[:error] = @device.error || ''
-                @status[:model] = @device.model
-                @status[:version] = @device.version
-              else
-                begin
-                  `lpr #{@queue[0]}`
-                  Smartware::Logging.logger.info "Printed #{@queue[0]}"
-                  @queue.shift
-                  sleep 5
-                rescue => e
-                  Smartware::Logging.logger.error e.message
-                  Smartware::Logging.logger.error e.backtrace.join("\n")
+              begin
+                if @queue.empty?
+                  @status[:error] = @device.error || ''
+                  @status[:model] = @device.model
+                  @status[:version] = @device.version
+                else
+                    `lpr #{@queue[0]}`
+                    Smartware::Logging.logger.info "Printed #{@queue[0]}"
+                    @queue.shift
+                    sleep 5
                 end
+              rescue => e
+                Smartware::Logging.logger.error e.message
+                Smartware::Logging.logger.error e.backtrace.join("\n")
               end
               sleep 0.2
             end

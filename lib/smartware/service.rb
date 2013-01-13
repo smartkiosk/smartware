@@ -68,8 +68,7 @@ module Smartware
       begin
         loop do
           pid = Process.wait(-1, Process::WNOHANG)
-
-          break if pid == 0
+          break if pid.nil?
 
           pids << pid
         end

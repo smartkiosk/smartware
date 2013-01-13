@@ -28,7 +28,6 @@ module Smartware
 
         def model
           model_code  = send "\x1DI1"
-          rom_version = send "\x1DI3", false
           model_name  = case model_code
                           when "a7" then 'Custom TG2460H'
                           when "a8" then 'Custom TG2480H'
@@ -36,9 +35,13 @@ module Smartware
                           when "ad" then 'Custom TL60'
                           else 'Unknown printer'
                         end
-          "#{model_name}, ROM v#{rom_version}"
+          model_name
         rescue
           -1
+        end
+
+        def version
+          send "\x1DI3", false
         end
 
         private
