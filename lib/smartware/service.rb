@@ -18,13 +18,16 @@ module Smartware
       Smartware::Logging.logger.info "Smartware started at #{Time.now}"
 
 
-      @threads = %w(smartware/interfaces/modem
-                    smartware/interfaces/cash_acceptor
-                    smartware/interfaces/printer
+      @threads = %w(modem
+                    cash_acceptor
+                    printer
                  ).inject([]) do |arr, iface|
                         arr << Thread.new do
                           begin
-                            require iface
+                            driver = Smartware::Service.config["#{iface}_driver"].downcase
+
+                            require "smartware/drivers/#{iface}/#{driver}"
+                            require "smartware/interfaces/#{iface}"
                           rescue => e
                             Smartware::Logging.logger.fatal "During startup of #{iface}:"
                             Smartware::Logging.logger.fatal e.message

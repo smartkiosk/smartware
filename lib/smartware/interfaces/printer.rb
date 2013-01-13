@@ -1,6 +1,4 @@
 require 'drb'
-require 'smartware/drivers/printer/dummy'
-require 'smartware/drivers/printer/tg24xx'
 
 module Smartware
   module Interface

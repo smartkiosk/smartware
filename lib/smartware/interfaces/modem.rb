@@ -1,6 +1,4 @@
 require 'drb'
-require 'smartware/drivers/modem/dummy'
-require 'smartware/drivers/modem/standard'
 
 module Smartware
   module Interface

@@ -1,6 +1,4 @@
 require 'drb'
-require 'smartware/drivers/cash_acceptor/ccnet'
-require 'smartware/drivers/cash_acceptor/dummy'
 
 module Smartware
   module Interface
