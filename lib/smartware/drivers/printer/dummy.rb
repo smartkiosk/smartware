@@ -17,6 +17,9 @@ module Smartware
           'Generic printer'
         end
 
+	def version
+	  'from hell'
+        end
       end
 
     end
