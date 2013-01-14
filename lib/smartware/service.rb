@@ -1,6 +1,5 @@
 require 'thread'
 require 'yaml'
-require 'smartware/logging'
 
 module Smartware
   module Service
@@ -14,7 +13,7 @@ module Smartware
 
       @config = YAML.load File.read(File.expand_path(config_file))
 
-      Smartware::Logging.logger = Logger.new($stdout)
+      Smartware::Logging.logger = Logging.init
       Smartware::Logging.logger.info "Smartware started at #{Time.now}"
 
 

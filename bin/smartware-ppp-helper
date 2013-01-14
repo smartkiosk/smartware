@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
-require "rubygems"
-require "bundler/setup"
-require "cmux"
+require 'rubygems'
+require 'bundler/setup'
+require 'cmux'
 
 device, apn = ARGV
 

@@ -1,3 +1,6 @@
+require 'smartkiosk/common'
+require 'smartware/logging'
+require 'smartware/service'
 require 'smartware/clients/cash_acceptor'
 require 'smartware/clients/printer'
 require 'smartware/clients/modem'
@@ -21,5 +24,3 @@ module Smartware
   end
 
 end
-
-

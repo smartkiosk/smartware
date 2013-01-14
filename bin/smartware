@@ -1,35 +1,22 @@
 #!/usr/bin/env ruby
 
-trap 'TTIN' do
-  Thread.list.each do |thread|
-    puts "Thread #{thread}:"
-    if thread.backtrace
-      puts thread.backtrace.join("\n")
-    else
-      puts "<no backtrace available>"
-    end
-  end
-end
-
-require "rubygems"
-begin
-  require "bundler/setup"
-rescue
-end
-
-require 'smartware/service'
+require 'rubygems'
+require 'bundler/setup'
+require 'smartware'
 require 'dante'
 
+Smartkiosk::Common::Patches.dante_should_log_with Smartware::Logging.logger
+
 runner = Dante::Runner.new('smartware')
-runner.description = "Smartkiosk hardware control daemon"
+runner.description = 'Smartkiosk hardware control daemon'
 runner.with_options do |opts|
-  opts.on("-c", "--config-file FILE", String, "Hardware config file to use. Sample: --config-file=/path/to/smartware.yml") do |x|
+  opts.on('-c', '--config-file FILE', String, 'Hardware config file to use. Sample: --config-file=/path/to/smartware.yml') do |x|
     options[:config] = x
   end
 end
 
 runner.execute do |opts|
-  abort "You should specify hardware configuration file path(--config-file=/path/to/smartware.yml)" if opts[:config].nil?
+  abort 'You should specify hardware configuration file path(--config-file=/path/to/smartware.yml)' if opts[:config].nil?
 
   begin
     Smartware::Service.start(opts[:config])
