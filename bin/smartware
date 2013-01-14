@@ -19,6 +19,7 @@ runner.execute do |opts|
   abort 'You should specify hardware configuration file path(--config-file=/path/to/smartware.yml)' if opts[:config].nil?
 
   begin
+    Smartware::Logging.destination = opts[:log_path] if opts[:log_path]
     Smartware::Service.start(opts[:config])
   rescue => e
     raise e if $DEBUG
