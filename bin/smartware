@@ -3,28 +3,24 @@
 require 'rubygems'
 require 'bundler/setup'
 require 'smartware'
-require 'dante'
+require 'trollop'
 
-Smartkiosk::Common::Patches.dante_should_log_with Smartware::Logging.logger
-
-runner = Dante::Runner.new('smartware')
-runner.description = 'Smartkiosk hardware control daemon'
-runner.with_options do |opts|
-  opts.on('-c', '--config-file FILE', String, 'Hardware config file to use. Sample: --config-file=/path/to/smartware.yml') do |x|
-    options[:config] = x
-  end
+opts = Trollop.options do
+  version "Smartware #{Smartware::VERSION}"
+  banner "Smartware - Smartkiosk hardware control service"
+  opt :config, "Hardware config file to use (smartware.yml, absolute path)", type: String, required: true
+  opt :log, "Log file to use", type: String
 end
 
-runner.execute do |opts|
-  abort 'You should specify hardware configuration file path(--config-file=/path/to/smartware.yml)' if opts[:config].nil?
+p opts[:log]
 
-  begin
-    Smartware::Logging.destination = opts[:log_path] if opts[:log_path]
-    Smartware::Service.start(opts[:config])
-  rescue => e
-    raise e if $DEBUG
-    STDERR.puts e.message
-    STDERR.puts e.backtrace.join("\n")
-    exit 1
-  end
+Smartware::Logging.destination = opts[:log] if opts[:log]
+Smartware::Logging.init
+
+begin
+  Smartware::Service.start(opts[:config])
+rescue => e
+  Smartware::Logging.logger.error e.message
+  Smartware::Logging.logger.error e.backtrace.join("\n")
+  exit 1
 end

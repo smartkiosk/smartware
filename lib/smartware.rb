@@ -1,4 +1,5 @@
 require 'smartkiosk/common'
+require 'smartware/version'
 require 'smartware/logging'
 require 'smartware/service'
 require 'smartware/clients/cash_acceptor'

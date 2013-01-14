@@ -13,9 +13,7 @@ module Smartware
 
       @config = YAML.load File.read(File.expand_path(config_file))
 
-      Smartware::Logging.logger = Logging.init
       Smartware::Logging.logger.info "Smartware started at #{Time.now}"
-
 
       @threads = %w(modem
                     cash_acceptor
@@ -23,27 +21,27 @@ module Smartware
                  ).inject([]) do |arr, iface|
                         arr << Thread.new do
                           begin
-                            driver = Smartware::Service.config["#{iface}_driver"].downcase
+                            driver = Service.config["#{iface}_driver"].downcase
 
                             require "smartware/drivers/#{iface}/#{driver}"
                             require "smartware/interfaces/#{iface}"
                           rescue => e
-                            Smartware::Logging.logger.fatal "During startup of #{iface}:"
-                            Smartware::Logging.logger.fatal e.message
-                            Smartware::Logging.logger.fatal e.backtrace.join("\n")
+                            Logging.logger.fatal "During startup of #{iface}:"
+                            Logging.logger.fatal e.message
+                            Logging.logger.fatal e.backtrace.join("\n")
                           end
                         end
                       end
 
       @threads.map(&:join)
     rescue => e
-      Smartware::Logging.logger.fatal e.message
-      Smartware::Logging.logger.fatal e.backtrace.join("\n")
+      Logging.logger.fatal e.message
+      Logging.logger.fatal e.backtrace.join("\n")
     end
 
     def self.stop
       @threads.map(&:kill)
-      Smartware::Logging.logger.info "Smartware shutdown at #{Time.now}"
+      Logging.logger.info "Smartware shutdown at #{Time.now}"
       exit 0
     end
 

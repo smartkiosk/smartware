@@ -19,6 +19,6 @@ Gem::Specification.new do |gem|
 
   gem.add_dependency 'smartkiosk-common', '>= 0.0.2'
   gem.add_dependency 'serialport'
-  gem.add_dependency 'dante'
   gem.add_dependency 'cmux'
+  gem.add_dependency 'trollop'
 end
