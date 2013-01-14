@@ -12,8 +12,6 @@ opts = Trollop.options do
   opt :log, "Log file to use", type: String
 end
 
-p opts[:log]
-
 Smartware::Logging.destination = opts[:log] if opts[:log]
 Smartware::Logging.init
 
