@@ -2,7 +2,7 @@ module Smartware
   module Interface
 
     class Modem < Interface
-      def initiaalize(config)
+      def initialize(config)
         super
 
         @configured = false
