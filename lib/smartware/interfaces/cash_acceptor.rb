@@ -30,8 +30,7 @@ module Smartware
       end
 
       def open_session(limit_min, limit_max)
-
-        @banknotes = {}
+        @banknotes.clear
 
         if limit_min.nil? || limit_max.nil?
           @limit = nil
