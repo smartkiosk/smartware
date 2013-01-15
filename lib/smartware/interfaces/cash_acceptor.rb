@@ -140,33 +140,53 @@ module Smartware
       end
 
       def execute_monitor
-        status = self.status
 
-        status[:error] = @device.error || ''
-        status[:model] = @device.model
-        status[:version] = @device.version
-        status[:cassette] = @device.cassette?
+        error = @device.error || ''
+        model = @device.model
+        version = @device.version
+        cassette = @device.cassette?
 
-        self.status = status
+        @status_mutex.synchronize do
+          @status[:error] = error
+          @status[:model] = model
+          @status[:version] = version
+          @status[:cassette] = cassette
+        end
       end
 
       def dispatch_commands
         loop do
           command = @commands.pop
 
-          send :"execute_#{command}"
+          begin
+            send :"execute_#{command}"
+          rescue => e
+            Smartware::Logging.logger.error "Execution of #{command} failed:"
+            Smartware::Logging.logger.error e.to_s
+            e.backtrace.each do |line|
+              Smartware::Logging.logger.error line
+            end
+          end
         end
       end
 
       def periodic
         loop do
-          @commands.push :monitor
+          begin
+            @commands.push :monitor
 
-          if self.accepting
-            @commands.push :get_money
-            sleep 0.5
-          else
-            sleep 5
+            if self.accepting
+              @commands.push :get_money
+              sleep 0.5
+            else
+              sleep 5
+            end
+          rescue => e
+            Smartware::Logging.logger.error "Error in periodic failed:"
+            Smartware::Logging.logger.error e.to_s
+            e.backtrace.each do |line|
+              Smartware::Logging.logger.error line
+            end
           end
         end
       end
