@@ -11,7 +11,7 @@ module Smartware
       @interfaces = @config["interfaces"].map do |config|
         interface = Smartware::Interface.const_get(config['name']).new config
 
-        DRb::DRbServer.new @config["uri"], interface
+        DRb::DRbServer.new config["uri"], interface
       end
     end
 
