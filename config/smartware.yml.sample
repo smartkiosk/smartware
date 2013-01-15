@@ -1,0 +1,10 @@
+interfaces:
+  - name: CashAcceptor
+    uri: druby://localhost:6001
+    driver: Dummy
+  - name: Modem
+    uri: druby://localhost:6002
+    driver: Dummy
+  - name: Printer
+    uri: druby://localhost:6005
+    driver: Dummy

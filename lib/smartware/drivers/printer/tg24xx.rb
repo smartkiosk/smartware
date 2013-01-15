@@ -11,8 +11,8 @@ module Smartware
 
       class TG24XX
 
-        def initialize(port)
-          @sp = SerialPort.new(port, 115200, 8, 1, SerialPort::NONE)
+        def initialize(config)
+          @sp = SerialPort.new(config["port"], 115200, 8, 1, SerialPort::NONE)
           @sp.read_timeout = 100
         end
 

@@ -64,8 +64,8 @@ module Smartware
 
         NOMINALS = { "2" => 10, "3" => 50, "4" => 100, "5" => 500, "6" => 1000, "7" => 5000 }
 
-        def initialize(port)
-          @port = port
+        def initialize(config)
+          @port = config["port"]
         end
 
         def cassette?

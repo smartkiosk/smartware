@@ -6,7 +6,7 @@ module Smartware
       class Dummy
 
         def initialize(config)
-          @port = config
+
         end
 
         def model

@@ -16,7 +16,16 @@ Smartware::Logging.destination = opts[:log] if opts[:log]
 Smartware::Logging.init
 
 begin
-  Smartware::Service.start(opts[:config])
+  Smartware::ProcessManager.init
+  service = Smartware::Service.new opts[:config]
+
+  Smartware::Logging.logger.info "Initializing Smartware"
+
+  service.start
+
+  Smartware::Logging.logger.info "Smartware ready"
+
+  service.join
 rescue => e
   Smartware::Logging.logger.error e.message
   Smartware::Logging.logger.error e.backtrace.join("\n")

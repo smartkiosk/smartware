@@ -21,4 +21,5 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'serialport'
   gem.add_dependency 'cmux'
   gem.add_dependency 'trollop'
+  gem.add_dependency 'activesupport'
 end

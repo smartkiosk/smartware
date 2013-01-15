@@ -1,78 +1,65 @@
-require 'drb'
-
 module Smartware
   module Interface
 
-    module Modem
-      @configured = false
-      @status = {}
+    class Modem < Interface
+      def initiaalize(config)
+        super
 
-      def self.configure!
-        Smartware::Logging.logger.debug "Creating modem"
-        @device = Smartware::Driver::Modem.const_get(
-            Smartware::Service.config['modem_driver']).new(
-            Smartware::Service.config['modem_config'])
-        Smartware::Logging.logger.debug "Starting modem"
-        @session.kill if @session
-        @session = self.poll_status!
-        @configured = true
-        Smartware::Logging.logger.info 'Modem monitor started'
+        @configured = false
         @status = {}
+
+        @session = Thread.new &method(:poll)
+        Smartware::Logging.logger.info 'Modem monitor started'
+        @configured = true
       rescue => e
         Smartware::Logging.logger.error e.message
         Smartware::Logging.logger.error e.backtrace.join("\n")
         @configured = false
       end
 
-      def self.configured?
+      def configured?
         @configured
       end
 
-      def self.error
+      def error
         @status[:error]
       end
 
-      def self.model
+      def model
         @status[:model]
       end
 
-      def self.version
+      def version
         @status[:version]
       end
 
-      def self.balance
+      def balance
         @status[:balance]
       end
 
-      def self.signal_level
+      def signal_level
         @status[:signal_level]
       end
 
       private
-        def self.poll_status!
-          t = Thread.new do
-            begin
-              loop do
-                @device.tick
 
-                @status[:signal_level] = @device.signal_level
-                @status[:model] = @device.model
-                @status[:version] = @device.version
-                @status[:error] = @device.error || ''
-                @status[:balance] = @device.balance
-              end
-            rescue => e
-              Smartware::Logging.logger.error e.message
-              Smartware::Logging.logger.error e.backtrace.join("\n")
-            end
+      def poll
+        begin
+          loop do
+            @device.tick
+
+            @status[:signal_level] = @device.signal_level
+            @status[:model] = @device.model
+            @status[:version] = @device.version
+            @status[:error] = @device.error || ''
+            @status[:balance] = @device.balance
           end
+        rescue => e
+          Smartware::Logging.logger.error e.message
+          Smartware::Logging.logger.error e.backtrace.join("\n")
         end
-
-      self.configure!
+      end
     end
   end
 end
-
-DRb.start_service('druby://localhost:6002', Smartware::Interface::Modem)
-DRb.thread.join
 

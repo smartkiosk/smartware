@@ -5,7 +5,7 @@ module Smartware
 
       class Dummy
 
-        def initialize(port)
+        def initialize(config)
 
         end
 
@@ -17,8 +17,8 @@ module Smartware
           'Generic printer'
         end
 
-	def version
-	  'from hell'
+        def version
+          'from hell'
         end
       end
 
