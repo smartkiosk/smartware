@@ -4,6 +4,9 @@ require 'drb'
 module Smartware
   module Interface
     class CashAcceptor < Interface
+
+      attr_reader :status, :banknotes
+
       def initialize(config)
         super
 
@@ -52,10 +55,6 @@ module Smartware
         @status[:error] || ''
       end
 
-      def status
-        @status
-      end
-
       def model
         @status[:model]
       end
@@ -70,9 +69,6 @@ module Smartware
         end
       end
 
-      def self.banknotes
-        @banknotes
-      end
 
       #
       # Session private method
