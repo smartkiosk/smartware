@@ -9,9 +9,8 @@ module Smartware
         super
 
         @limit = nil
-        @banknotes = Hash.new do |hash, key|
-          hash[key] = 0
-        end
+        @banknotes = {}
+        @banknotes.default = 0
 
         @status_mutex = Mutex.new
         @status = {
