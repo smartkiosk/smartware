@@ -15,12 +15,12 @@ module Smartware
         @status_mutex = Mutex.new
         @status = {
           casette: false,
-          accepting: false,
           error: '',
           model: '',
           version: ''
         }
 
+        @accepting = false
         @commands = Queue.new
         @commands.push :close
 
@@ -69,10 +69,6 @@ module Smartware
         self.status[:version]
       end
 
-      def accepting
-        self.status[:accepting]
-      end
-
       def status
         @status_mutex.synchronize { @status }
       end
@@ -98,9 +94,7 @@ module Smartware
         @device.accept
         Smartware::Logging.logger.info "Cash acceptor open"
 
-        @status_mutex.synchronize do
-          @status[:accepting] = true
-        end
+        @accepting = true
       end
 
       def execute_get_money
@@ -138,9 +132,7 @@ module Smartware
         @device.cancel_accept
         Smartware::Logging.logger.info "Cash acceptor close"
 
-        @status_mutex.synchronize do
-          @status[:accepting] = false
-        end
+        @accepting = false
       end
 
       def execute_monitor
@@ -163,7 +155,15 @@ module Smartware
           command = @commands.pop
 
           begin
+            start = Time.now
+
             send :"execute_#{command}"
+
+            complete = Time.now
+            if complete - start > 1
+              Smartware::Logging.logger.warn "#{command} has been running for #{complete - start} seconds."
+            end
+
           rescue => e
             Smartware::Logging.logger.error "Execution of #{command} failed:"
             Smartware::Logging.logger.error e.to_s
@@ -179,7 +179,7 @@ module Smartware
           begin
             @commands.push :monitor
 
-            if self.accepting
+            if @accepting
               @commands.push :get_money
               sleep 0.5
             else
