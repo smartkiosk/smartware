@@ -34,8 +34,12 @@ module Smartware
 
         if limit_min.nil? || limit_max.nil?
           @limit = nil
+
+          Smartware::Logging.logger.info "Session open, unlimited"
         else
           @limit = limit_min..limit_max
+
+          Smartware::Logging.logger.info "Session open, limit: #{@limit}"
         end
 
         @commands.push :open
@@ -43,6 +47,8 @@ module Smartware
       end
 
       def close_session
+        Smartware::Logging.logger.info "Session closed"
+
         @commands.push :close
         @limit = nil
       end

@@ -6,7 +6,13 @@ module Smartware
         super
 
         @configured = false
-        @status = {}
+        @status = {
+          error: '',
+          model: '',
+          version: '',
+          balance: '',
+          signal_level: ''
+        }
 
         @session = Thread.new &method(:poll)
         Smartware::Logging.logger.info 'Modem monitor started'
