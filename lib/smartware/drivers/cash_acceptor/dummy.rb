@@ -23,7 +23,7 @@ module Smartware
         end
 
         def error
-          false
+          nil
         end
 
         def current_banknote

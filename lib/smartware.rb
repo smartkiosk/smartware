@@ -13,10 +13,13 @@ require 'smartware/process_manager'
 require 'smartware/clients/cash_acceptor'
 require 'smartware/clients/printer'
 require 'smartware/clients/modem'
+require 'smartware/clients/watchdog'
 require 'smartware/interfaces/interface'
 require 'smartware/interfaces/cash_acceptor'
 require 'smartware/interfaces/modem'
 require 'smartware/interfaces/printer'
+require 'smartware/interfaces/watchdog'
+require 'smartware/connection_monitor'
 
 module Smartware
 
@@ -34,6 +37,10 @@ module Smartware
 
   def self.modem
     Smartware::Client::Modem
+  end
+
+  def self.watchdog
+    Smartware::Client::Watchdog
   end
 
 end

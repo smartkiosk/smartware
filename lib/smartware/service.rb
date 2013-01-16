@@ -13,6 +13,20 @@ module Smartware
 
         DRb::DRbServer.new config["uri"], interface
       end
+
+      unless @config["connection_timeout"].nil?
+        Thread.new do
+          begin
+            monitor = ConnectionMonitor.new @config["connection_timeout"]
+
+            monitor.run
+          rescue => e
+            Smartware::Logging.logger.error "Exception in connection monitor thread: #{e}"
+            e.backtrace.each { |line| Smartware::Logging.logger.error line }
+          end
+        end
+      end
+
     end
 
     def stop

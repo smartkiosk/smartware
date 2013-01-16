@@ -18,7 +18,7 @@ module Smartware
         end
 
         def error
-          false
+          nil
         end
 
         def signal_level
