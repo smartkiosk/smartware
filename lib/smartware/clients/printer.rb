@@ -32,8 +32,14 @@ module Smartware
         'No device'
       end
 
-      def self.print(filepath)
-        @device.print filepath
+      def self.print(text, max_time = 30)
+        @device.print text, max_time
+      rescue => e
+        'No device'
+      end
+
+      def self.print_text(text, max_time = 30)
+        @device.print_text text, max_time
       rescue => e
         'No device'
       end
