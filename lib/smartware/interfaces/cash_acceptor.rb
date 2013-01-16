@@ -126,8 +126,7 @@ module Smartware
       end
 
       def execute_monitor
-
-        error = @device.error || ''
+        error = @device.error
         model = @device.model
         version = @device.version
         cassette = @device.cassette?
