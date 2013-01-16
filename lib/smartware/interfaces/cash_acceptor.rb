@@ -167,14 +167,12 @@ module Smartware
       def periodic
         loop do
           begin
-            @commands.push :monitor
-
-            if @accepting
-              @commands.push :get_money
-              sleep 0.5
-            else
-              sleep 5
+            if @commands.empty?
+              @commands.push :monitor
+              @commands.push :get_money if @accepting
             end
+
+            sleep 0.5
           rescue => e
             Smartware::Logging.logger.error "Error in periodic failed:"
             Smartware::Logging.logger.error e.to_s
