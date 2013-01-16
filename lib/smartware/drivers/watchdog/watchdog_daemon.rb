@@ -8,6 +8,7 @@ module Smartware
 
         def initialize(config)
           @error = nil
+          @config = config
         end
 
         def model
