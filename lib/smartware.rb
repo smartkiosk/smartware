@@ -2,6 +2,7 @@ require 'thread'
 require 'yaml'
 require 'active_support/core_ext/string/inflections'
 require 'drb'
+require 'redcarpet'
 
 require 'smartkiosk/common'
 

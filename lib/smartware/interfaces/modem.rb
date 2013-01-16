@@ -1,50 +1,26 @@
 module Smartware
   module Interface
-
     class Modem < Interface
+      MODEM_NOT_AVAILABLE = 1
+
       def initialize(config)
         super
 
-        @configured = false
-        @status = {
-          error: '',
-          model: '',
-          version: '',
-          balance: '',
-          signal_level: ''
-        }
+        update_status do
+          @status[:balance] = ''
+          @status[:signal_level] = ''
+        end
 
         @session = Thread.new &method(:poll)
         Smartware::Logging.logger.info 'Modem monitor started'
-        @configured = true
-      rescue => e
-        Smartware::Logging.logger.error e.message
-        Smartware::Logging.logger.error e.backtrace.join("\n")
-        @configured = false
-      end
-
-      def configured?
-        @configured
-      end
-
-      def error
-        @status[:error]
-      end
-
-      def model
-        @status[:model]
-      end
-
-      def version
-        @status[:version]
       end
 
       def balance
-        @status[:balance]
+        self.status[:balance]
       end
 
       def signal_level
-        @status[:signal_level]
+        self.status[:signal_level]
       end
 
       private
@@ -54,11 +30,13 @@ module Smartware
           loop do
             @device.tick
 
-            @status[:signal_level] = @device.signal_level
-            @status[:model] = @device.model
-            @status[:version] = @device.version
-            @status[:error] = @device.error || ''
-            @status[:balance] = @device.balance
+            update_status do
+              @status[:signal_level] = @device.signal_level
+              @status[:model] = @device.model
+              @status[:version] = @device.version
+              @status[:error] = @device.error || ''
+              @status[:balance] = @device.balance
+            end
           end
         rescue => e
           Smartware::Logging.logger.error e.message

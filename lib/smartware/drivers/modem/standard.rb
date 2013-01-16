@@ -11,7 +11,7 @@ module Smartware
         def initialize(config)
           @config = config
           @state = :closed
-          @error = "not initialized yet"
+          @error = Interface::Modem::MODEM_NOT_AVAILABLE
           @mux = nil
           @status_channel = nil
           @info_requested = false
@@ -75,7 +75,7 @@ module Smartware
               @status_channel = @mux.allocate(@config["status_channel"]).open
               @chatter = CMUX::ModemChatter.new @status_channel
               @chatter.subscribe "CUSD", self
-              @error = false
+              @error = nil
               @ussd_interval = 0
               Smartware::Logging.logger.info "modem ready"
             rescue => e
@@ -184,7 +184,7 @@ module Smartware
         def close_modem(reason)
           Smartware::Logging.logger.warn "#{reason}"
 
-          @error = reason
+          @error = Interface::Modem::MODEM_NOT_AVAILABLE
 
           begin
             @mux.close

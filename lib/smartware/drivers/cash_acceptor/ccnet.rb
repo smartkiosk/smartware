@@ -4,6 +4,11 @@
 #
 require 'serialport'
 
+COMMUNICATION_ERROR = 1
+DROP_CASETTE_FULL = 2
+DROP_CASETTE_OUT_OF_POSITION = 3
+
+
 module Smartware
   module Driver
     module CashAcceptor
@@ -45,21 +50,21 @@ module Smartware
         }
 
         ERRORS = {
-            "41" => "23", # 'Drop Cassette Full',
-            "42" => "24", # 'Drop Cassette out of position. The Bill Validator has detected the drop cassette to be open or removed.',
-            "43" => "25", # 'Validator Jammed. A bill(s) has jammed in the acceptance path.',
-            "44" => "26", # 'Drop Cassette Jammed. A bill has jammed in drop cassette.',
-            "45" => "27", # 'Cheated. Intentions of the user to deceive the Bill Validator are detected',
-            "46" => "28", # 'Pause. Bill Validator stops motion of the second bill until the second bill is removed.',
-            "47" => "29", # 'Bill validator failure',
-            "50" => "30", # 'Stack Motor Failure',
-            "51" => "31", # 'Transport Motor Speed Failure',
-            "52" => "32", # 'Transport Motor Failure',
-            "53" => "33", # 'Aligning Motor Failure',
-            "54" => "34", # 'Initial Cassette Status Failure',
-            "55" => "35", # 'Optic Canal Failure',
-            "56" => "36", # 'Magnetic Canal Failure',
-            "5f" => "37"  # 'Capacitance Canal Failure'
+            "41" => Interface::CashAcceptor::DROP_CASETTE_FULL,
+            "42" => Interface::CashAcceptor::DROP_CASETTE_OUT_OF_POSITION,
+            "43" => Interface::CashAcceptor::VALIDATOR_JAMMED,
+            "44" => Interface::CashAcceptor::DROP_CASETTE_JAMMED,
+            "45" => Interface::CashAcceptor::CHEATED,
+            "46" => Interface::CashAcceptor::PAUSE,
+            "47" => Interface::CashAcceptor::BILL_VALIDATOR_FAILURE,
+            "50" => Interface::CashAcceptor::STACK_MOTOR_FAILURE,
+            "51" => Interface::CashAcceptor::TRANSPORT_MOTOR_SPEED_FAILURE,
+            "52" => Interface::CashAcceptor::TRANSPORT_MOTOR_FAILURE,
+            "53" => Interface::CashAcceptor::ALIGNING_MOTOR_FAILURE,
+            "54" => Interface::CashAcceptor::INITIAL_CASETTE_STATUS_FAILURE,
+            "55" => Interface::CashAcceptor::OPTIC_CANAL_FAILURE,
+            "56" => Interface::CashAcceptor::MAGNETIC_CANAL_FAILURE,
+            "5f" => Interface::CashAcceptor::CAPACITANCE_CANAL_FAILURE
         }
 
         NOMINALS = { "2" => 10, "3" => 50, "4" => 100, "5" => 500, "6" => 1000, "7" => 5000 }
@@ -69,8 +74,7 @@ module Smartware
         end
 
         def cassette?
-          return false if error == "24"
-          true
+          error != Interface::CashAcceptor::DROP_CASETTE_OUT_OF_POSITION
         end
 
         def model
@@ -92,12 +96,12 @@ module Smartware
         def error
           res = poll
           ack
-          return false if res != nil and CCNET::STATUSES.keys.include?(res[3])
-          return false if res == nil
+          return nil if res != nil and CCNET::STATUSES.keys.include?(res[3])
+          return nil if res == nil
 
           result = check_error(res)
         rescue
-          -1
+          Interface::CashAcceptor::COMMUNICATION_ERROR
         end
 
         def current_banknote
@@ -108,7 +112,7 @@ module Smartware
           ack
 
           result = check_error(res)
-          if res != nil and res[2] == "7" and res[3] == "80" and CCNET::NOMINALS.keys.include?(res[4]) # has money?
+          if !res.nil? and res[2] == "7" and res[3] == "80" and CCNET::NOMINALS.keys.include?(res[4]) # has money?
             result =  CCNET::NOMINALS[res[4]]
           end
           result
@@ -156,7 +160,7 @@ module Smartware
             if CCNET::ERRORS.keys.include? res[3]
               res[3] == "47" ? CCNET::ERRORS[res[4]] : CCNET::ERRORS[res[3]] # More details for 47 error
             else
-              false
+              nil
             end
           end
 

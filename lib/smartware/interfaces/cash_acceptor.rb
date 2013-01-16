@@ -1,9 +1,23 @@
-require 'drb'
-
-
 module Smartware
   module Interface
     class CashAcceptor < Interface
+
+      DROP_CASETTE_FULL = 1
+      DROP_CASETTE_OUT_OF_POSITION = 2
+      VALIDATOR_JAMMED = 3
+      DROP_CASETTE_JAMMED = 4
+      CHEATED = 5
+      PAUSE = 6
+      BILL_VALIDATOR_FAILURE = 7
+      STACK_MOTOR_FAILURE = 8
+      TRANSPORT_MOTOR_SPEED_FAILURE = 9
+      TRANSPORT_MOTOR_FAILURE = 10
+      ALIGNING_MOTOR_FAILURE = 11
+      INITIAL_CASETTE_STATUS_FAILURE = 12
+      OPTIC_CANAL_FAILURE = 13
+      MAGNETIC_CANAL_FAILURE = 14
+      CAPACITANCE_CANAL_FAILURE = 15
+      COMMUNICATION_ERROR = 16
 
       def initialize(config)
         super
@@ -12,13 +26,9 @@ module Smartware
         @banknotes = {}
         @banknotes.default = 0
 
-        @status_mutex = Mutex.new
-        @status = {
-          casette: false,
-          error: '',
-          model: '',
-          version: ''
-        }
+        update_status do
+          @status[:casette] = true
+        end
 
         @accepting = false
         @commands = Queue.new
@@ -53,28 +63,8 @@ module Smartware
         @limit = nil
       end
 
-      def configured?
-        true
-      end
-
-      def error
-        self.status[:error]
-      end
-
-      def model
-        self.status[:model]
-      end
-
-      def version
-        self.status[:version]
-      end
-
-      def status
-        @status_mutex.synchronize { @status }
-      end
-
       def banknotes
-        @status_mutex.synchronize { @banknotes }
+        update_status { @banknotes }
       end
 
       def cashsum
@@ -104,7 +94,7 @@ module Smartware
         when Integer
           if limit_satisfied(self.cashsum + res)
             @device.stack
-            @status_mutex.synchronize do
+            update_status do
               @banknotes[res] += 1
             end
             Smartware::Logging.logger.info "Cash acceptor bill stacked, #{res}"
@@ -116,7 +106,7 @@ module Smartware
         when String
           Smartware::Logging.logger.error "Cash acceptor error #{res}"
 
-          @status_mutex.synchronize do
+          update_status do
             @status[:error] = res
           end
         end
@@ -142,7 +132,7 @@ module Smartware
         version = @device.version
         cassette = @device.cassette?
 
-        @status_mutex.synchronize do
+        update_status do
           @status[:error] = error
           @status[:model] = model
           @status[:version] = version

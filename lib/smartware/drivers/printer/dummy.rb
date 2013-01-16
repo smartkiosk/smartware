@@ -1,4 +1,3 @@
-# coding: utf-8
 module Smartware
   module Driver
     module Printer
@@ -10,7 +9,7 @@ module Smartware
         end
 
         def error
-          false
+          nil
         end
 
         def model
@@ -19,6 +18,18 @@ module Smartware
 
         def version
           'from hell'
+        end
+
+        def print(data)
+
+        end
+
+        def query
+
+        end
+
+        def new_render
+          Redcarpet::Render::HTML.new
         end
       end
 
