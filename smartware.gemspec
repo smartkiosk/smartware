@@ -19,7 +19,7 @@ Gem::Specification.new do |gem|
 
   gem.add_dependency 'smartkiosk-common', '>= 0.0.2'
   gem.add_dependency 'serialport'
-  gem.add_dependency 'cmux', '=> 0.0.2'
+  gem.add_dependency 'cmux', '>= 0.0.2'
   gem.add_dependency 'trollop'
   gem.add_dependency 'activesupport'
   gem.add_dependency 'redcarpet'
