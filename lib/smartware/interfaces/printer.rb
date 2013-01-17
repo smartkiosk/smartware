@@ -12,7 +12,8 @@ module Smartware
 
         @printer_mutex = Mutex.new
         Thread.new &method(:poll)
-        @markdown = Redcarpet::Markdown.new(@device.new_render)
+        @render = @device.new_render
+        @markdown = Redcarpet::Markdown.new(@render)
       end
 
       def test
@@ -35,10 +36,20 @@ EOS
       end
 
       def print_markdown(text, max_time = 30)
-        print_text @markdown.render(text), max_time
+        do_print @markdown.render(text), max_time
       end
 
       def print_text(text, max_time = 30)
+        data = ""
+        data << @render.doc_header
+        data << @render.normal_text(text, true)
+        data << @render.doc_footer
+
+        do_print text, max_time
+      end
+
+      private
+      def do_print(text, max_time)
         Smartware::Logging.logger.info "Started printing"
 
         started = Time.now
@@ -74,8 +85,6 @@ EOS
 
         self.error.nil? || self.error >= 1000
       end
-
-      private
 
       def query_printer
         @device.query
