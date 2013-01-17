@@ -16,7 +16,7 @@ module Smartware
       end
 
       def test
-        print_text <<-EOS
+        print_markdown <<-EOS
 Smartware: **#{Smartware::VERSION}**
 
 Driver:  **#{@config["driver"]}**
