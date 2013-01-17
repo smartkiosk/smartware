@@ -44,6 +44,12 @@ module Smartware
         'No device'
       end
 
+      def self.print_markdown(text, max_time = 30)
+        @device.print_markdown text, max_time
+      rescue => e
+        'No device'
+      end
+
     end
   end
 end

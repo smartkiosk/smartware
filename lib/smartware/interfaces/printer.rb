@@ -30,8 +30,12 @@ EOS
 
       def print(file, max_time = 30)
         File.open(file, "r") do |io|
-          print_text io.read, max_time
+          print_markdown io.read, max_time
         end
+      end
+
+      def print_markdown(text, max_time = 30)
+        print_text @markdown.render(text), max_time
       end
 
       def print_text(text, max_time = 30)
@@ -45,7 +49,7 @@ EOS
           loop do
             case @device.status
             when :ready, :warning
-              @device.print @markdown.render(text)
+              @device.print text
 
               query_printer
 
