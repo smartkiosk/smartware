@@ -3,6 +3,7 @@ require 'yaml'
 require 'active_support/core_ext/string/inflections'
 require 'drb'
 require 'redcarpet'
+require 'stringio'
 
 require 'smartkiosk/common'
 
@@ -14,11 +15,13 @@ require 'smartware/clients/cash_acceptor'
 require 'smartware/clients/printer'
 require 'smartware/clients/modem'
 require 'smartware/clients/watchdog'
+require 'smartware/clients/card_reader'
 require 'smartware/interfaces/interface'
 require 'smartware/interfaces/cash_acceptor'
 require 'smartware/interfaces/modem'
 require 'smartware/interfaces/printer'
 require 'smartware/interfaces/watchdog'
+require 'smartware/interfaces/card_reader'
 require 'smartware/connection_monitor'
 
 module Smartware
