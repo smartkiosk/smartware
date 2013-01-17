@@ -230,7 +230,7 @@ module Smartware
         end
 
         def normal_text(text, keep_newlines = false)
-          text.encode("CP866")
+          text.encode!("CP866")
 
           unless keep_newlines
             text.gsub! "\n", " "
