@@ -14,8 +14,7 @@ module Smartware
         end
 
         def version
-          # TODO: implement this
-          "not implemented"
+          "1.0"
         end
 
         def cassette?

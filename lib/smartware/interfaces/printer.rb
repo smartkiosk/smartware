@@ -68,7 +68,7 @@ EOS
 
         Smartware::Logging.logger.info "Completed"
 
-        self.error.nil? || self.error < 1000
+        self.error.nil? || self.error >= 1000
       end
 
       private
