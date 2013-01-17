@@ -10,26 +10,18 @@ module Smartware
 
       def self.error
         @device.error
-      rescue => e
-        'No device'
       end
 
       def self.model
         @device.model
-      rescue => e
-        'No device'
       end
 
       def self.version
         @device.version
-      rescue => e
-        'No device'
       end
 
       def self.reboot_modem
         @device.reboot_modem
-      rescue => e
-        'No device'
       end
     end
   end
