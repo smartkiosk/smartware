@@ -52,6 +52,10 @@ module Smartware
             elsif (paper_status & 4) != 0
               @status = :warning
               @error = Interface::Printer::PAPER_NEAR_END
+
+            else
+              @status = :ready
+              @error = nil
             end
 
             @sp.write MODEL_QUERY
