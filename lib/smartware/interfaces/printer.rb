@@ -45,7 +45,7 @@ EOS
         data << @render.normal_text(text, true)
         data << @render.doc_footer
 
-        do_print text, max_time
+        do_print data, max_time
       end
 
       private
