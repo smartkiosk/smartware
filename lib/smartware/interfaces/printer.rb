@@ -40,10 +40,10 @@ EOS
       end
 
       def print_text(text, max_time = 30)
-        data = ""
-        data << @render.doc_header
-        data << @render.normal_text(text, true)
-        data << @render.doc_footer
+        data = "".force_encoding("BINARY")
+        data << @render.doc_header.force_encoding("BINARY")
+        data << @render.normal_text(text, true).force_encoding("BINARY")
+        data << @render.doc_footer.force_encoding("BINARY")
 
         do_print data, max_time
       end
