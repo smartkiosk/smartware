@@ -8,6 +8,10 @@ module Smartware
 
         end
 
+        def status
+          :ready
+        end
+
         def error
           nil
         end
@@ -21,7 +25,7 @@ module Smartware
         end
 
         def print(data)
-
+          true
         end
 
         def query

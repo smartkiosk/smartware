@@ -41,9 +41,9 @@ EOS
 
       def print_text(text, max_time = 30)
         data = "".force_encoding("BINARY")
-        data << @render.doc_header.force_encoding("BINARY")
-        data << @render.normal_text(text, true).force_encoding("BINARY")
-        data << @render.doc_footer.force_encoding("BINARY")
+        data << @render.doc_header.force_encoding("BINARY") if @render.respond_to? :doc_header
+        data << @render.normal_text(text, true).force_encoding("BINARY") if @render.respond_to? :normal_text
+        data << @render.doc_footer.force_encoding("BINARY") if @render.respond_to? :doc_footer
 
         do_print data, max_time
       end
