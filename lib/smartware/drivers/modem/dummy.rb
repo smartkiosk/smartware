@@ -27,7 +27,7 @@ module Smartware
         end
 
         def balance
-          "Сервис временно недоступен"
+          "Service is temporarily disabled"
         end
 
         def tick
