@@ -70,7 +70,7 @@ module Smartware
             Smartware::Logging.logger.info "trying to open modem"
 
             begin
-              @mux = CMUX::MUX.new @config["device"]
+              @mux = CMUX::MUX.new @config["port"]
               @state = :open
               @status_channel = @mux.allocate(@config["status_channel"]).open
               @chatter = CMUX::ModemChatter.new @status_channel
