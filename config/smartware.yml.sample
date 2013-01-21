@@ -5,6 +5,12 @@ interfaces:
   - name: Modem
     uri: druby://localhost:6002
     driver: Dummy
+  - name: Watchdog
+    uri: druby://localhost:6003
+    driver: Dummy
+  - name: CardReader
+    uri: druby://localhost:6004
+    driver: Dummy
   - name: Printer
     uri: druby://localhost:6005
     driver: Dummy
