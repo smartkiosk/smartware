@@ -43,6 +43,7 @@ EOS
         data = "".force_encoding("BINARY")
         data << @render.doc_header.force_encoding("BINARY") if @render.respond_to? :doc_header
         data << @render.normal_text(text, true).force_encoding("BINARY") if @render.respond_to? :normal_text
+        data << @render.linebreak.force_encoding("BINARY") if @render.respond_to? :linebreak
         data << @render.doc_footer.force_encoding("BINARY") if @render.respond_to? :doc_footer
 
         do_print data, max_time
