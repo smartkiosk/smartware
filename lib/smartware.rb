@@ -4,6 +4,8 @@ require 'active_support/core_ext/string/inflections'
 require 'drb'
 require 'redcarpet'
 require 'stringio'
+require 'eventmachine'
+require 'serialport'
 
 require 'smartkiosk/common'
 

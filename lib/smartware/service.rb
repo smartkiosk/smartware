@@ -8,21 +8,24 @@ module Smartware
     end
 
     def start
-      @interfaces = @config["interfaces"].map do |config|
-        interface = Smartware::Interface.const_get(config['name']).new config
+      EventMachine.epoll
+      EventMachine.run do
+        @interfaces = @config["interfaces"].map do |config|
+          interface = Smartware::Interface.const_get(config['name']).new config
 
-        DRb::DRbServer.new config["uri"], interface
-      end
+          DRb::DRbServer.new config["uri"], interface
+        end
 
-      unless @config["connection_timeout"].nil?
-        Thread.new do
-          begin
-            monitor = ConnectionMonitor.new @config["connection_timeout"].to_i
+        unless @config["connection_timeout"].nil?
+          Thread.new do
+            begin
+              monitor = ConnectionMonitor.new @config["connection_timeout"].to_i
 
-            monitor.run
-          rescue => e
-            Smartware::Logging.logger.error "Exception in connection monitor thread: #{e}"
-            e.backtrace.each { |line| Smartware::Logging.logger.error line }
+              monitor.run
+            rescue => e
+              Smartware::Logging.logger.error "Exception in connection monitor thread: #{e}"
+              e.backtrace.each { |line| Smartware::Logging.logger.error line }
+            end
           end
         end
       end
@@ -31,6 +34,8 @@ module Smartware
 
     def stop
       @interfaces.each &:stop_service
+
+      EventMachine.stop_event_loop
     end
 
     def join
