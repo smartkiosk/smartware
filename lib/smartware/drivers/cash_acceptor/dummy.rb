@@ -4,9 +4,20 @@ module Smartware
     module CashAcceptor
 
       class Dummy
+        attr_reader   :bill_types
+
+        attr_accessor :escrow, :stacked, :returned, :status
+        attr_accessor :enabled_types
 
         def initialize(config)
+          @bill_types = []
 
+          @escrow = nil
+          @stacked = nil
+          @returned = nil
+          @status = nil
+
+          @enabled_types = nil
         end
 
         def model
@@ -15,39 +26,6 @@ module Smartware
 
         def version
           "1.0"
-        end
-
-        def cassette?
-          true
-        end
-
-        def error
-          nil
-        end
-
-        def current_banknote
-          return false if ( rand(9) < 6 )
-          [20, 40, 60, 80].sample
-        end
-
-        def accept
-
-        end
-
-        def cancel_accept
-
-        end
-
-        def stack
-
-        end
-
-        def return
-
-        end
-
-        def reset
-
         end
       end
 

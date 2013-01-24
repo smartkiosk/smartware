@@ -1,20 +1,10 @@
-# coding: utf-8
-#
-# CCNET protocol driver for CashCode bill validator
-#
-require 'serialport'
-
-COMMUNICATION_ERROR = 1
-DROP_CASETTE_FULL = 2
-DROP_CASETTE_OUT_OF_POSITION = 3
-
+require "smartware/drivers/common/ccnet_connection.rb"
 
 module Smartware
   module Driver
     module CashAcceptor
-
       class CCNET
-
+        # Commands
         RESET                  = 0x30
         GET_STATUS             = 0x31
         SET_SECURITY           = 0x32
@@ -33,179 +23,257 @@ module Smartware
         ACK                    = 0x00
         DISPENCE               = 0x3C
 
-        STATUSES = {
-            "10" => "10", # 'Power up',
-            "11" => "11", # 'Power Up with Bill in Validator',
-            "12" => "12", # 'Power Up with Bill in Stacker',
-            "13" => "13", # 'Initialize',
-            "14" => "14", # 'Idling',
-            "15" => "15", # 'Accepting',
-            "17" => "16", # 'Stacking',
-            "18" => "17", # 'Returning',
-            "19" => "18", # 'Unit Disabled',
-            "1a" => "19", # 'Holding',
-            "1b" => "20", # 'Device Busy',
-            "1c" => "21", # 'Rejecting',
-            "82" => "22"  # 'Bill returned'
-        }
+        # States
+        POWER_UP = 0x10
+        POWER_UP_WITH_BILL_IN_VALIDATOR = 0x11
+        POWER_UP_WITH_BILL_IN_STACKER = 0x12
+        INITIALIZE = 0x13
+        IDLING = 0x14
+        ACCEPTING = 0x15
+        STACKING = 0x17
+        RETURNING = 0x18
+        UNIT_DISABLED = 0x19
+        HOLDING = 0x1A
+        DEVICE_BUSY = 0x1B
+        REJECTING = 0x1C
+        DROP_CASETTE_FULL = 0x41
+        DROP_CASETTE_OUT_OF_POSITION = 0x42
+        VALIDATOR_JAMMED = 0x43
+        DROP_CASETTE_JAMMED = 0x44
+        CHEATED = 0x45
+        PAUSE = 0x46
+        FAILURE = 0x47
+        ESCROW = 0x80
+        STACKED = 0x81
+        RETURNED = 0x82
 
         ERRORS = {
-            "41" => Interface::CashAcceptor::DROP_CASETTE_FULL,
-            "42" => Interface::CashAcceptor::DROP_CASETTE_OUT_OF_POSITION,
-            "43" => Interface::CashAcceptor::VALIDATOR_JAMMED,
-            "44" => Interface::CashAcceptor::DROP_CASETTE_JAMMED,
-            "45" => Interface::CashAcceptor::CHEATED,
-            "46" => Interface::CashAcceptor::PAUSE,
-            "47" => Interface::CashAcceptor::BILL_VALIDATOR_FAILURE,
-            "50" => Interface::CashAcceptor::STACK_MOTOR_FAILURE,
-            "51" => Interface::CashAcceptor::TRANSPORT_MOTOR_SPEED_FAILURE,
-            "52" => Interface::CashAcceptor::TRANSPORT_MOTOR_FAILURE,
-            "53" => Interface::CashAcceptor::ALIGNING_MOTOR_FAILURE,
-            "54" => Interface::CashAcceptor::INITIAL_CASETTE_STATUS_FAILURE,
-            "55" => Interface::CashAcceptor::OPTIC_CANAL_FAILURE,
-            "56" => Interface::CashAcceptor::MAGNETIC_CANAL_FAILURE,
-            "5f" => Interface::CashAcceptor::CAPACITANCE_CANAL_FAILURE
+          0x41 => Interface::CashAcceptor::DROP_CASETTE_FULL,
+          0x42 => Interface::CashAcceptor::DROP_CASETTE_OUT_OF_POSITION,
+          0x43 => Interface::CashAcceptor::VALIDATOR_JAMMED,
+          0x44 => Interface::CashAcceptor::DROP_CASETTE_JAMMED,
+          0x45 => Interface::CashAcceptor::CHEATED,
+          0x47 => Interface::CashAcceptor::BILL_VALIDATOR_FAILURE,
+          0x50 => Interface::CashAcceptor::STACK_MOTOR_FAILURE,
+          0x51 => Interface::CashAcceptor::TRANSPORT_MOTOR_SPEED_FAILURE,
+          0x52 => Interface::CashAcceptor::TRANSPORT_MOTOR_FAILURE,
+          0x53 => Interface::CashAcceptor::ALIGNING_MOTOR_FAILURE,
+          0x54 => Interface::CashAcceptor::INITIAL_CASETTE_STATUS_FAILURE,
+          0x55 => Interface::CashAcceptor::OPTIC_CANAL_FAILURE,
+          0x56 => Interface::CashAcceptor::MAGNETIC_CANAL_FAILURE,
+          0x5f => Interface::CashAcceptor::CAPACITANCE_CANAL_FAILURE
         }
 
-        NOMINALS = { "2" => 10, "3" => 50, "4" => 100, "5" => 500, "6" => 1000, "7" => 5000 }
+        attr_reader   :bill_types
+
+        attr_accessor :escrow, :stacked, :returned, :status
+        attr_accessor :enabled_types
 
         def initialize(config)
-          @port = config["port"]
-        end
+          @io = SerialPort.new(config["port"], 9600, 8, 1, SerialPort::NONE)
+          @io.flow_control = SerialPort::NONE
 
-        def cassette?
-          error != Interface::CashAcceptor::DROP_CASETTE_OUT_OF_POSITION
+          @connection = EventMachine.attach @io, CCNETConnection
+          @connection.address = 3
+
+          @escrow = nil
+          @stacked = nil
+          @returned = nil
+          @status = nil
+
+          @bill_types = nil
+          @identification = nil
+          @enabled_types = 0
+
+          set_poll
         end
 
         def model
-          if answer = send([IDENTIFICATION], false)
-            answer = answer[2..answer.length]
-            return "#{answer[0..15]} #{answer[16..27]} #{answer[28..34].unpack("C*")}"
-          else
-            return "Unknown device answer"
-          end
-        rescue
-          -1
+          return nil if @identification.nil?
+
+          @identification[0..14]
         end
 
         def version
-          # TODO: implement this
-          "not implemented"
-        end
+          return nil if @identification.nil?
 
-        def error
-          res = poll
-          ack
-          return nil if res != nil and CCNET::STATUSES.keys.include?(res[3])
-          return nil if res == nil
-
-          result = check_error(res)
-        rescue
-          Interface::CashAcceptor::COMMUNICATION_ERROR
-        end
-
-        def current_banknote
-          poll
-          ack
-          hold
-          res = poll
-          ack
-
-          result = check_error(res)
-          if !res.nil? and res[2] == "7" and res[3] == "80" and CCNET::NOMINALS.keys.include?(res[4]) # has money?
-            result =  CCNET::NOMINALS[res[4]]
-          end
-          result
-        end
-
-        def get_status
-          send([GET_STATUS])
-        end
-
-        def reset
-          send([RESET])
-        end
-
-        def ack
-          send([ACK])
-        end
-
-        def stack
-          send([STACK])
-        end
-
-        def return
-          send([RETURN])
-        end
-
-        def hold
-          send([])
-        end
-
-        def poll
-          send([POLL])
-        end
-
-        def accept
-          send([ENABLE_BILL_TYPES,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF])
-        end
-
-        def cancel_accept
-          send([ENABLE_BILL_TYPES,0x00,0x00,0x00,0x00,0x00,0x00])
-          get_status
+          @identification[15..26]
         end
 
         private
-          def check_error(res)
-            if CCNET::ERRORS.keys.include? res[3]
-              res[3] == "47" ? CCNET::ERRORS[res[4]] : CCNET::ERRORS[res[3]] # More details for 47 error
+
+        def parse_bill_types(table)
+          offset = 0
+          types = Array.new(24)
+
+          while offset < table.length
+            mantissa = table.getbyte(offset + 0)
+            position = table.getbyte(offset + 4)
+            country  = table.slice(offset + 1, 3)
+
+            offset += 5
+
+            next if country == "\x00\x00\x00"
+
+            exponent = (10 ** (position & 0x7F))
+
+            if (position & 0x80) != 0
+              value = mantissa / exponent
             else
-              nil
+              value = mantissa * exponent
             end
+
+            types[offset / 5 - 1] = Interface::CashAcceptor::BillType.new value, country
           end
 
-          def crc_for(msg)
-            polynom = 0x8408.to_i
-            msg  = msg.collect{|o| o.to_i}
-            res = 0
-            tmpcrc = 0
-            0.upto(msg.length-1){|i|
-              tmpcrc = res ^ msg[i]
-              0.upto(7){
-                if tmpcrc & 1 != 0
-                  tmpcrc = tmpcrc >> 1
-                  tmpcrc = tmpcrc ^ polynom
-                else
-                  tmpcrc = tmpcrc >> 1
+          types
+        end
+
+        def escrow(bill)
+          ret = false
+
+          begin
+            ret = @escrow.call @bill_types[bill]
+          rescue => e
+            Logging.logger.error "Error in escrow: #{e}"
+            e.backtrace.each { |line| Logging.logger.error line }
+          end
+
+          @connection.command(ret ? STACK : RETURN) {}
+        end
+
+        def stacked(bill)
+          begin
+            @stacked.call @bill_types[bill]
+          rescue => e
+            Logging.logger.error "Error in stacked: #{e}"
+            e.backtrace.each { |line| Logging.logger.error line }
+          end
+        end
+
+        def returned(bill)
+          begin
+            @returned.call @bill_types[bill]
+          rescue => e
+            Logging.logger.error "Error in returned: #{e}"
+            e.backtrace.each { |line| Logging.logger.error line }
+          end
+        end
+
+        def poll
+          @connection.command(POLL) do |resp|
+            interval = nil
+
+            if resp.nil?
+              @identification = nil
+              @bill_types = nil
+              interval = 5
+              error = Interface::CashAcceptor::COMMUNICATION_ERROR
+            else
+              state = resp.getbyte(0)
+
+              case state
+              when POWER_UP,
+                   POWER_UP_WITH_BILL_IN_VALIDATOR
+                   POWER_UP_WITH_BILL_IN_STACKER
+
+                Logging.logger.info "Cash acceptor powered up, initializing"
+
+                @connection.command(RESET) {}
+
+              when INITIALIZE, ACCEPTING, STACKING, RETURNING, REJECTING,
+                   CHEATED
+                # Cash acceptor is busy
+
+              when IDLING
+                if @enabled_types == 0
+                  @connection.command(ENABLE_BILL_TYPES, "\x00" * 6) {}
                 end
-              }
-              res = tmpcrc
-            }
-            crc = tmpcrc
-            crc = ("%02x" % crc).rjust(4,"0")
-            crc = [Integer("0x"+crc[2..3]), Integer("0x"+crc[0..1])]
-          end
 
-          def send(msg, parse_answer = true)
-            sp = SerialPort.new(@port, 9600, 8, 1, SerialPort::NONE)
-            sp.read_timeout = 100
-            message = [0x02, 0x03, 5 + msg.length]
-            message += msg
-            crc = crc_for(message)
-            message += crc
-            message = message.pack("C*")
-            sp.write message
-            ans = sp.gets
-            if ans
-              parse_answer ? res = ans.unpack("C*").map{|e| e.to_s(16) } : res = ans
-            else
-              res = nil
+              when UNIT_DISABLED
+                if @identification.nil?
+                  Logging.logger.debug "Identifying acceptor"
+
+                  @connection.command(IDENTIFICATION) do |resp|
+                    @identification = resp
+                    Logging.logger.debug "It's #{model}, serial #{version}"
+                  end
+
+                elsif @bill_types.nil?
+                  Logging.logger.debug "Loading bill table"
+
+                  @connection.command(GET_BILL_TABLE) do |resp|
+                    @bill_types = parse_bill_types resp unless resp.nil?
+                  end
+
+                elsif @enabled_types != 0
+                  mask = [
+                    # Enabled types
+                    0,
+                    (enabled_types & 0x300) >> 2,
+                    enabled_types & 0xFF,
+                    # Escrow types
+                    0,
+                    (enabled_types & 0x300) >> 2,
+                    enabled_types & 0xFF,
+                  ]
+
+                  @connection.command(ENABLE_BILL_TYPES, mask.pack("C*")) {}
+                else
+                  interval = 0.5
+                end
+
+              when DEVICE_BUSY
+                interval = resp.getbyte(1) * 0.1
+
+              when PAUSE
+                Logging.logger.warn "Cash acceptor pause"
+
+                @connection.command(RESET) {}
+
+              when DROP_CASETTE_FULL, DROP_CASETTE_OUT_OF_POSITION,
+                   VALIDATOR_JAMMED, DROP_CASETTE_JAMMED
+
+                error = ERRORS[state]
+
+              when FAILURE
+                detail = resp.getbyte(1)
+                error = ERRORS[detail]
+
+              when ESCROW
+                escrow resp.getbyte(1)
+
+              when STACKED
+                stacked resp.getbyte(1)
+
+              when RETURNED
+                returned resp.getbyte(1)
+
+              else # incl. HOLDING
+                Logging.logger.warn "Unexpected cash acceptor state: #{state.to_s 16}"
+              end
             end
-            sp.close
-            res
-          end
-      end
 
+            if interval.nil?
+              set_poll
+            else
+              set_poll interval
+            end
+
+            begin
+              @status.call error
+            rescue => e
+              Logging.logger.error "Error in status: #{e}"
+              e.backtrace.each { |line| Logging.logger.error line }
+            end
+          end
+        end
+
+        def set_poll(interval = 0.1)
+          EventMachine.add_timer(interval, &method(:poll))
+        end
+
+      end
     end
   end
 end

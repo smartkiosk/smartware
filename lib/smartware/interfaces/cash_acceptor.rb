@@ -19,8 +19,27 @@ module Smartware
       CAPACITANCE_CANAL_FAILURE = 15
       COMMUNICATION_ERROR = 16
 
+      class BillType
+        attr_reader :value
+        attr_reader :country
+
+        def initialize(value, country)
+          @value = value
+          @country = country
+        end
+
+        def to_s
+          "#{@country}:#{@value}"
+        end
+      end
+
       def initialize(config)
         super
+
+        @device.escrow = method :escrow
+        @device.stacked = method :stacked
+        @device.returned = method :returned
+        @device.status = method :status
 
         @limit = nil
         @banknotes = {}
@@ -30,12 +49,6 @@ module Smartware
           @status[:casette] = true
         end
 
-        @accepting = false
-        @commands = Queue.new
-        @commands.push :close
-
-        Thread.new &method(:dispatch_commands)
-        Thread.new &method(:periodic)
         Smartware::Logging.logger.info "Cash acceptor monitor started"
       end
 
@@ -45,21 +58,34 @@ module Smartware
         if limit_min.nil? || limit_max.nil?
           @limit = nil
 
-          Smartware::Logging.logger.info "Session open, unlimited"
+          Smartware::Logging.logger.debug "Session open, unlimited"
         else
           @limit = limit_min..limit_max
 
-          Smartware::Logging.logger.info "Session open, limit: #{@limit}"
+          Smartware::Logging.logger.debug "Session open, limit: #{@limit}"
         end
 
-        @commands.push :open
-        @commands.push :get_money
+        EventMachine.schedule do
+          types = 0
+          @device.bill_types.each_with_index do |type, index|
+            next if type.nil?
+
+            if type.country == 'RUS'
+              types |= 1 << index
+            end
+          end
+
+          @device.enabled_types = types
+        end
       end
 
       def close_session
-        Smartware::Logging.logger.info "Session closed"
+        Smartware::Logging.logger.debug "Session closed"
 
-        @commands.push :close
+        EventMachine.schedule do
+          @device.enabled_types = 0
+        end
+
         @limit = nil
       end
 
@@ -75,110 +101,36 @@ module Smartware
 
       private
 
-      def limit_satisfied(sum)
+      def limit_satisfied?(sum)
         @limit.nil? or @limit.include? sum
       end
 
-      def execute_open
-        @device.reset
-        @device.accept
-        Smartware::Logging.logger.info "Cash acceptor open"
-
-        @accepting = true
+      def escrow(banknote)
+        limit_satisfied?(self.cashsum + banknote.value)
       end
 
-      def execute_get_money
-        res = @device.current_banknote
-
-        case res
-        when Integer
-          if limit_satisfied(self.cashsum + res)
-            @device.stack
-            update_status do
-              @banknotes[res] += 1
-            end
-            Smartware::Logging.logger.info "Cash acceptor bill stacked, #{res}"
-          else
-            @device.return
-            Smartware::Logging.logger.info "Cash acceptor limit violation, return #{res}"
-          end
-
-        when String
-          Smartware::Logging.logger.error "Cash acceptor error #{res}"
-
-          update_status do
-            @status[:error] = res
-          end
-        end
-
-        if !@limit.nil? && @limit.end > 0 && @limit.end == self.cashsum
-          # Close cash acceptor if current cashsum equal max-limit
-
-          execute_close
-        end
-      end
-
-      def execute_close
-        @device.cancel_accept
-        Smartware::Logging.logger.info "Cash acceptor close"
-
-        @accepting = false
-      end
-
-      def execute_monitor
-        error = @device.error
-        model = @device.model
-        version = @device.version
-        cassette = @device.cassette?
+      def stacked(banknote)
+        value = banknote.value
 
         update_status do
+          @banknotes[value] += 1
+        end
+
+        Smartware::Logging.logger.debug "cash acceptor: bill stacked, #{value}"
+      end
+
+      def returned(banknote)
+        value = banknote.value
+
+        Smartware::Logging.logger.debug "cash acceptor: bill returned, #{value}"
+      end
+
+      def status(error)
+        update_status do
           @status[:error] = error
-          @status[:model] = model
-          @status[:version] = version
-          @status[:cassette] = cassette
-        end
-      end
-
-      def dispatch_commands
-        loop do
-          command = @commands.pop
-
-          begin
-            start = Time.now
-
-            send :"execute_#{command}"
-
-            complete = Time.now
-            if complete - start > 1
-              Smartware::Logging.logger.warn "#{command} has been running for #{complete - start} seconds."
-            end
-
-          rescue => e
-            Smartware::Logging.logger.error "Execution of #{command} failed:"
-            Smartware::Logging.logger.error e.to_s
-            e.backtrace.each do |line|
-              Smartware::Logging.logger.error line
-            end
-          end
-        end
-      end
-
-      def periodic
-        loop do
-          begin
-            if @commands.empty?
-              @commands.push :monitor
-              @commands.push :get_money if @accepting
-            end
-
-            sleep 0.5
-          rescue => e
-            Smartware::Logging.logger.error "Error in periodic failed:"
-            Smartware::Logging.logger.error e.to_s
-            e.backtrace.each do |line|
-              Smartware::Logging.logger.error line
-            end
-          end
+          @status[:model] = @device.model
+          @status[:version] = @device.version
+          @status[:casette] = error != DROP_CASETTE_OUT_OF_POSITION
         end
       end
     end
