@@ -17,7 +17,7 @@ module Smartware
       unless @config["connection_timeout"].nil?
         Thread.new do
           begin
-            monitor = ConnectionMonitor.new @config["connection_timeout"]
+            monitor = ConnectionMonitor.new @config["connection_timeout"].to_i
 
             monitor.run
           rescue => e

@@ -9,7 +9,14 @@ module Smartware
         attr_reader :error, :model, :balance, :version
 
         def initialize(config)
-          @config = config
+          @port = config["port"]
+          @balance_ussd = config["balance_ussd"]
+          @status_channel_id = config["status_channel"].to_i
+          @ppp_channel_id = config["ppp_channel"].to_i
+          @poll_interval = config["poll_interval"].to_i
+          @balance_interval = config["balance_interval"].to_i
+          @apn = config["apn"]
+
           @state = :closed
           @error = Interface::Modem::MODEM_NOT_AVAILABLE
           @mux = nil
@@ -18,7 +25,7 @@ module Smartware
           @model = "GSM modem"
           @version = ""
           @signal = "+CSQ: 99,99"
-          @ussd_interval = 0
+          @balance_timer = 0
           @balance = nil
           @ppp_state = :stopped
           @ppp_pid = nil
@@ -70,13 +77,13 @@ module Smartware
             Smartware::Logging.logger.info "trying to open modem"
 
             begin
-              @mux = CMUX::MUX.new @config["port"]
+              @mux = CMUX::MUX.new @port
               @state = :open
-              @status_channel = @mux.allocate(@config["status_channel"]).open
+              @status_channel = @mux.allocate(@status_channel_id).open
               @chatter = CMUX::ModemChatter.new @status_channel
               @chatter.subscribe "CUSD", self
               @error = nil
-              @ussd_interval = 0
+              @balance_timer = 0
               Smartware::Logging.logger.info "modem ready"
             rescue => e
               close_modem "unable to open modem: #{e}"
@@ -103,15 +110,15 @@ module Smartware
             end
 
             if modem_works
-              if @config.include?("balance_ussd") && @ussd_interval == 0
-                @ussd_interval = @config["balance_interval"]
+              if !@balance_ussd.nil? && @balance_timer == 0
+                @balance_timer = @balance_interval
                 begin
-                  @chatter.command("+CUSD=1,\"#{@config["balance_ussd"]}\",15", 1)
+                  @chatter.command("+CUSD=1,\"#{@balance_ussd}\",15", 1)
                 rescue => e
                   close_modem "USSD request failed: #{e}"
                 end
               else
-                @ussd_interval -= 1
+                @balance_timer -= 1
               end
             else
               close_modem "modem is not responding"
@@ -125,11 +132,11 @@ module Smartware
             if @state == :open
               Smartware::Logging.logger.info "trying to start pppd"
               begin
-                @ppp_channel = @mux.allocate @config["ppp_channel"]
+                @ppp_channel = @mux.allocate @ppp_channel_id
 
                 @ppp_pid = Process.spawn "smartware-ppp-helper",
                     @ppp_channel.device,
-                    @config["apn"]
+                    @apn
                 @ppp_state = :running
 
                 Smartware::Logging.logger.info "started pppd, PID #{@ppp_pid}"
@@ -171,12 +178,12 @@ module Smartware
         def wait_for_event
           if @state == :open
             begin
-              CMUX::ModemChatter.poll [ @chatter ], @config["poll_interval"]
+              CMUX::ModemChatter.poll [ @chatter ], @poll_interval
             rescue => e
               close_modem "modem poll failed: #{e}"
             end
           else
-            sleep @config["poll_interval"]
+            sleep @poll_interval
           end
 
         end
