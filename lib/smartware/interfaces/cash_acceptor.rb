@@ -39,7 +39,7 @@ module Smartware
         @device.escrow = method :escrow
         @device.stacked = method :stacked
         @device.returned = method :returned
-        @device.status = method :status
+        @device.status = method :status_changed
 
         @limit = nil
         @banknotes = {}
@@ -125,7 +125,7 @@ module Smartware
         Smartware::Logging.logger.debug "cash acceptor: bill returned, #{value}"
       end
 
-      def status(error)
+      def status_changed(error)
         update_status do
           @status[:error] = error
           @status[:model] = @device.model
