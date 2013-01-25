@@ -41,17 +41,35 @@ module Smartware
     end
 
     def post_command
-      return unless ready?
-
-      @executing_command, command, = @command_mutex.synchronize do
-        [ @command_queue.any?, *@command_queue.first ]
+      executing_command, command = @command_mutex.synchronize do
+        if ready?
+          [ @command_queue.any?, @command_queue.first ]
+        else
+          [ false, nil ]
+        end
       end
 
-      if @executing_command
+      if executing_command
+        @executing_command = executing_command
         install_timeouts
         @retries = max_retries
         command, = @command_mutex.synchronize { @command_queue.first }
         submit_command *command
+      end
+    end
+
+    def kill_queue
+      blocks = nil
+
+      @command_mutex.synchronize do
+        blocks = @command_queue.map { |command, block| block }
+        @command_queue.clear
+
+        @ready_for_commands = false
+      end
+
+      blocks.each do |block|
+        block.call nil
       end
     end
 
