@@ -91,7 +91,7 @@ module Smartware
       end
 
       def banknotes
-        update_status { @banknotes }
+        @banknotes
       end
 
       def cashsum

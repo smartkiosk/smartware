@@ -35,7 +35,7 @@ module Smartware
         if message == "update"
           @status_mutex.synchronize do
             @status.each do |key, value|
-              publish_event "#{@iface_id}.#{key}", value
+              publish_event key, value
             end
           end
         end
@@ -63,7 +63,7 @@ module Smartware
         @status_mutex.synchronize do
           if @status[key] != value
             @status[key] = value
-            publish_event "#{@iface_id}.#{key}", value
+            publish_event key, value
           end
         end
       end
