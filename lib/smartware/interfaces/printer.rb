@@ -16,6 +16,32 @@ module Smartware
         @markdown = Redcarpet::Markdown.new(@render)
       end
 
+      def receive_request(command, *args)
+        case command
+        when "test", "print", "print_markdown", "print_text"
+          EventMachine.defer do
+            ret = false
+            job_id = args.shift
+            publish_event :started, job_id
+
+            begin
+              ret = send command.to_sym, *args
+            rescue => e
+              Logging.logger.error "Error during processing of print job #{job_id}: #{e}"
+              e.backtrace.each { |line| Logging.logger.error line }
+            ensure
+              if ret
+                publish_event :completed, job_id
+              else
+                publish_event :failed, job_id
+              end
+            end
+          end
+        else
+          super
+        end
+      end
+
       def test
         print_markdown <<-EOS
 Smartware: **#{Smartware::VERSION}**
