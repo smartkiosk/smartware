@@ -66,7 +66,7 @@ module Smartware
 
         attr_reader   :bill_types
 
-        attr_accessor :escrow, :stacked, :returned, :status
+        attr_accessor :open, :closed, :escrow, :stacked, :returned, :status
         attr_accessor :enabled_types
 
         def initialize(config)
@@ -76,6 +76,8 @@ module Smartware
           @connection = EventMachine.attach @io, CCNETConnection
           @connection.address = 3
 
+          @open = nil
+          @closed = nil
           @escrow = nil
           @stacked = nil
           @returned = nil
@@ -188,6 +190,13 @@ module Smartware
               when IDLING
                 if @enabled_types == 0
                   @connection.command(ENABLE_BILL_TYPES, "\x00" * 6) {}
+
+                  begin
+                    @closed.call
+                  rescue => e
+                    Logging.logger.error "Error in open: #{e}"
+                    e.backtrace.each { |line| Logging.logger.error line }
+                  end
                 end
 
               when UNIT_DISABLED
@@ -219,6 +228,13 @@ module Smartware
                   ]
 
                   @connection.command(ENABLE_BILL_TYPES, mask.pack("C*")) {}
+
+                  begin
+                    @open.call
+                  rescue => e
+                    Logging.logger.error "Error in open: #{e}"
+                    e.backtrace.each { |line| Logging.logger.error line }
+                  end
                 else
                   interval = 0.5
                 end

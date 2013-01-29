@@ -4,22 +4,18 @@ module Smartware
 
       WATCHDOG_NOT_AVAILBLE = 1
 
-      def initialize(config)
+      def initialize(config, service)
         super
 
-        update_status do
-          @status[:error] = nil
-          @status[:model] = @device.model
-          @status[:version] = @device.version
-        end
+        update_status :error, nil
+        update_status :model, @device.model
+        update_status :version, @device.version
       end
 
       def reboot_modem
         @device.reboot_modem
 
-        update_status do
-          @status[:error] = @device.error
-        end
+        update_status :error, @device.error
       end
     end
   end

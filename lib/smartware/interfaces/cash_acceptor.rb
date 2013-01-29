@@ -33,9 +33,11 @@ module Smartware
         end
       end
 
-      def initialize(config)
+      def initialize(config, service)
         super
 
+        @device.open = method :device_open
+        @device.closed = method :device_closed
         @device.escrow = method :escrow
         @device.stacked = method :stacked
         @device.returned = method :returned
@@ -45,9 +47,8 @@ module Smartware
         @banknotes = {}
         @banknotes.default = 0
 
-        update_status do
-          @status[:casette] = true
-        end
+        update_status :casette, false
+        update_status :accepting, false
 
         Smartware::Logging.logger.info "Cash acceptor monitor started"
       end
@@ -99,6 +100,10 @@ module Smartware
         end
       end
 
+      def receive_request(command, *args)
+        send command, *args
+      end
+
       private
 
       def limit_satisfied?(sum)
@@ -112,11 +117,11 @@ module Smartware
       def stacked(banknote)
         value = banknote.value
 
-        update_status do
-          @banknotes[value] += 1
-        end
+        @banknotes[value] += 1
 
         Smartware::Logging.logger.debug "cash acceptor: bill stacked, #{value}"
+
+        publish_event :stacked, value
       end
 
       def returned(banknote)
@@ -126,12 +131,20 @@ module Smartware
       end
 
       def status_changed(error)
-        update_status do
-          @status[:error] = error
-          @status[:model] = @device.model
-          @status[:version] = @device.version
-          @status[:casette] = error != DROP_CASETTE_OUT_OF_POSITION
-        end
+        update_status :error, error
+        update_status :model, @device.model
+        update_status :version, @device.version
+        update_status :casette, error != DROP_CASETTE_OUT_OF_POSITION
+        update_status :cashsum, cashsum
+        update_status :accepting, @device.accepting?
+      end
+
+      def device_open
+        Smartware::Logging.logger.debug "Device acknowleged open"
+      end
+
+      def device_closed
+        Smartware::Logging.logger.debug "Device acknowleged close"
       end
     end
   end

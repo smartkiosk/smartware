@@ -18,35 +18,37 @@ module Smartware
         end
       end
 
-      def initialize(config)
+      def initialize(config, service)
         super
 
-        @status[:model] = @device.model
-        @status[:version] = @device.version
+        update_status :model, @device.model
+        update_status :version, @device.version
       end
 
       def card_inserted?
-        @device.status == :card_inserted
+        ret = @device.status == :card_inserted
+        update_status :error, nil
+        ret
       rescue CardReaderError => e
-        @status[:error] = e.code
+        update_status :error, e.code
         nil
       end
 
       def start_accepting
         @device.accepting = true
-        @status[:error] = nil
+        update_status :error, nil
         true
       rescue CardReaderError => e
-        @status[:error] = e.code
+        update_status :error, e.code
         false
       end
 
       def stop_accepting
         @device.accepting = false
-        @status[:error] = nil
+        update_status :error, nil
         true
       rescue CardReaderError => e
-        @status[:error] = e.code
+        update_status :error, e.code
         false
       end
 
@@ -55,27 +57,28 @@ module Smartware
 
         sleep 0.5 while @device.status == :card_at_gate
 
-        @status[:error] = nil
+        update_status :error, nil
         true
       rescue CardReaderError => e
-        @status[:error] = e.code
+        update_status :error, e.code
         false
       end
 
       def capture
         @device.capture
-        @status[:error] = nil
+        update_status :error, nil
         true
       rescue CardReaderError => e
-        @status[:error] = e.code
+        update_status :error, e.code
         false
       end
 
       def read_magstrip
-        @device.read_magstrip
+        ret = @device.read_magstrip
+        update_status :error, nil
 
       rescue CardReaderError => e
-        @status[:error] = e.code
+        update_status :error, e.code
         nil
       end
     end

@@ -6,6 +6,8 @@ require 'redcarpet'
 require 'stringio'
 require 'eventmachine'
 require 'serialport'
+require 'amqp'
+require 'json'
 
 require 'smartkiosk/common'
 

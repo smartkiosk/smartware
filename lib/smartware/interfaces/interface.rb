@@ -3,8 +3,10 @@ module Smartware
     class Interface
       attr_reader :config
 
-      def initialize(config)
+      def initialize(config, service)
         @config = config
+        @service = service
+
         @status_mutex = Mutex.new
         @status = {
           model: '',
@@ -14,11 +16,29 @@ module Smartware
         iface = @config["name"]
         driver = @config["driver"]
 
-        require "smartware/drivers/#{iface.underscore}/#{driver.underscore}"
+        @iface_id = iface.underscore
+
+        require "smartware/drivers/#{@iface_id}/#{driver.underscore}"
 
         @device = Smartware::Driver.const_get(iface.to_s)
                                    .const_get(driver.to_s)
                                    .new(config)
+
+        @request_queue = @service.amqp_channel.queue(@iface_id, auto_delete: true)
+        @request_queue.bind(@service.amqp_commands, routing_key: @iface_id)
+        @request_queue.subscribe do |metadata, request|
+          receive_request *JSON.load(request)
+        end
+      end
+
+      def general(message)
+        if message == "update"
+          @status_mutex.synchronize do
+            @status.each do |key, value|
+              publish_event "#{@iface_id}.#{key}", value
+            end
+          end
+        end
       end
 
       def error
@@ -39,8 +59,21 @@ module Smartware
 
       protected
 
-      def update_status(&block)
-        @status_mutex.synchronize &block
+      def update_status(key, value)
+        @status_mutex.synchronize do
+          if @status[key] != value
+            @status[key] = value
+            publish_event "#{@iface_id}.#{key}", value
+          end
+        end
+      end
+
+      def receive_request(*request)
+        Smartware::Logging.logger.warn "#{self.class.name} received request #{request.inspect}, but interface is not AMQP-compatible yet."
+      end
+
+      def publish_event(key, *data)
+        @service.amqp_status.publish JSON.dump(data), routing_key: "#{@iface_id}.#{key}"
       end
     end
   end

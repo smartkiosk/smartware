@@ -3,13 +3,11 @@ module Smartware
     class Modem < Interface
       MODEM_NOT_AVAILABLE = 1
 
-      def initialize(config)
+      def initialize(config, service)
         super
 
-        update_status do
-          @status[:balance] = ''
-          @status[:signal_level] = ''
-        end
+        update_status :balance, ''
+        update_status :signal_level, ''
 
         @session = Thread.new &method(:poll)
         Smartware::Logging.logger.info 'Modem monitor started'
@@ -30,13 +28,11 @@ module Smartware
           loop do
             @device.tick
 
-            update_status do
-              @status[:signal_level] = @device.signal_level
-              @status[:model] = @device.model
-              @status[:version] = @device.version
-              @status[:error] = @device.error
-              @status[:balance] = @device.balance
-            end
+            update_status :signal_level, @device.signal_level
+            update_status :model, @device.model
+            update_status :version, @device.version
+            update_status :error, @device.error
+            update_status :balance, @device.balance
           end
         rescue => e
           Smartware::Logging.logger.error e.message

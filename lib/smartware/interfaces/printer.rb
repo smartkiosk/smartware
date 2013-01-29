@@ -7,7 +7,7 @@ module Smartware
       OUT_OF_PAPER = 3
       PAPER_NEAR_END = 1000
 
-      def initialize(config)
+      def initialize(config, service)
         super
 
         @printer_mutex = Mutex.new
@@ -89,11 +89,9 @@ EOS
 
       def query_printer
         @device.query
-        update_status do
-          @status[:error] = @device.error
-          @status[:model] = @device.model
-          @status[:version] = @device.version
-        end
+        update_status :error, @device.error
+        update_status :model, @device.model
+        update_status :version, @device.version
       end
 
       def poll
