@@ -1,3 +1,4 @@
+broker: localhost
 interfaces:
   - name: CashAcceptor
     uri: druby://localhost:6001
