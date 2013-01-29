@@ -136,15 +136,18 @@ module Smartware
         update_status :version, @device.version
         update_status :casette, error != DROP_CASETTE_OUT_OF_POSITION
         update_status :cashsum, cashsum
-        update_status :accepting, @device.accepting?
       end
 
       def device_open
         Smartware::Logging.logger.debug "Device acknowleged open"
+
+        update_status :accepting, true
       end
 
       def device_closed
         Smartware::Logging.logger.debug "Device acknowleged close"
+
+        update_status :accepting, false
       end
     end
   end
