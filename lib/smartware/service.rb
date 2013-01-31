@@ -15,9 +15,7 @@ module Smartware
     def start
       EventMachine.epoll
       EventMachine.run do
-        p @config
-
-        @amqp_connection = AMQP.connect @config["broker"]
+        @amqp_connection = AMQP.connect host: @config["broker"]
         @amqp_channel = AMQP::Channel.new @connection
         @amqp_general = @amqp_channel.fanout "smartware.general", auto_delete: true
         @amqp_status = @amqp_channel.topic "smartware.status", auto_delete: true
@@ -41,9 +39,16 @@ module Smartware
         end
 
         unless @config["connection_timeout"].nil?
-          monitor = ConnectionMonitor.new @config["connection_timeout"].to_i, self
+          Thread.new do
+            begin
+              monitor = ConnectionMonitor.new @config["connection_timeout"].to_i
 
-          monitor.run
+              monitor.run
+            rescue => e
+              Smartware::Logging.logger.error "Exception in connection monitor thread: #{e}"
+              e.backtrace.each { |line| Smartware::Logging.logger.error line }
+            end
+          end
         end
       end
 
