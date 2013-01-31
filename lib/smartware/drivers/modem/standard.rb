@@ -194,7 +194,7 @@ module Smartware
           @error = Interface::Modem::MODEM_NOT_AVAILABLE
 
           begin
-            @mux.close
+            @mux.close unless @mux.nil?
           rescue
           end
 
