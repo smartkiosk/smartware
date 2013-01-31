@@ -17,11 +17,11 @@ module Smartware
       EventMachine.run do
         @amqp_connection = AMQP.connect host: @config["broker"]
         @amqp_channel = AMQP::Channel.new @connection
-        @amqp_general = @amqp_channel.fanout "smartware.general", auto_delete: true
-        @amqp_status = @amqp_channel.topic "smartware.status", auto_delete: true
-        @amqp_commands = @amqp_channel.direct "smartware.commands", auto_delete: true
+        @amqp_general = @amqp_channel.fanout "smartware.general"
+        @amqp_status = @amqp_channel.topic "smartware.status"
+        @amqp_commands = @amqp_channel.direct "smartware.commands"
 
-        general_queue = @amqp_channel.queue '', exclusive: true
+        general_queue = @amqp_channel.queue "smartware.general"
         general_queue.bind @amqp_general
         general_queue.subscribe do |metadata, message|
           @devices.each do |device|

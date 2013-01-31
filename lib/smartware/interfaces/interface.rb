@@ -24,7 +24,7 @@ module Smartware
                                    .const_get(driver.to_s)
                                    .new(config)
 
-        @request_queue = @service.amqp_channel.queue('', exclusive: true)
+        @request_queue = @service.amqp_channel.queue(@iface_id, auto_delete: true)
         @request_queue.bind(@service.amqp_commands, routing_key: @iface_id)
         @request_queue.subscribe do |metadata, request|
           begin
