@@ -53,7 +53,7 @@ module Smartware
         Smartware::Logging.logger.info "Cash acceptor monitor started"
       end
 
-      def open_session(limit_min = nil, limit_max = nil)
+      def open_session(limit_min, limit_max)
         @banknotes.clear
 
         if limit_min.nil? || limit_max.nil?
@@ -101,16 +101,7 @@ module Smartware
       end
 
       def receive_request(command, *args)
-        case command
-        when "open"
-          open_session *args
-
-        when "close"
-          close_session
-
-        else
-          super
-        end
+        send command, *args
       end
 
       private

@@ -17,16 +17,6 @@ module Smartware
 
         update_status :error, @device.error
       end
-
-      def receive_request(command, *args)
-        case command
-        when "reboot_modem"
-          reboot_modem
-
-        else
-          super
-        end
-      end
     end
   end
 end

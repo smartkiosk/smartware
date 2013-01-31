@@ -27,13 +27,7 @@ module Smartware
         @request_queue = @service.amqp_channel.queue(@iface_id, auto_delete: true)
         @request_queue.bind(@service.amqp_commands, routing_key: @iface_id)
         @request_queue.subscribe do |metadata, request|
-          begin
-            receive_request *JSON.load(request)
-          rescue => e
-            Logging.logger.error "Error in receive_request of #{@iface_id}: #{e}"
-            e.backtrace.each { |line| Logging.logger.error line }
-            Logging.logger.error "Original request: #{request}"
-          end
+          receive_request *JSON.load(request)
         end
       end
 
@@ -75,7 +69,7 @@ module Smartware
       end
 
       def receive_request(*request)
-        Smartware::Logging.logger.warn "#{self.class.name} received request #{request.inspect}, but it's not implemented."
+        Smartware::Logging.logger.warn "#{self.class.name} received request #{request.inspect}, but interface is not AMQP-compatible yet."
       end
 
       def publish_event(key, *data)
