@@ -7,6 +7,7 @@ module Smartware
         @config = config
         @service = service
 
+        @status_mutex = Mutex.new
         @status = {
           model: '',
           version: ''
@@ -38,18 +39,38 @@ module Smartware
 
       def general(message)
         if message == "update"
-          @status.each do |key, value|
-            publish_event key, value
+          @status_mutex.synchronize do
+            @status.each do |key, value|
+              publish_event key, value
+            end
           end
         end
+      end
+
+      def error
+        self.status[:error]
+      end
+
+      def model
+        self.status[:model]
+      end
+
+      def version
+        self.status[:version]
+      end
+
+      def status
+        @status_mutex.synchronize { @status }
       end
 
       protected
 
       def update_status(key, value)
-        if @status[key] != value
-          @status[key] = value
-          publish_event key, value
+        @status_mutex.synchronize do
+          if @status[key] != value
+            @status[key] = value
+            publish_event key, value
+          end
         end
       end
 
@@ -58,9 +79,7 @@ module Smartware
       end
 
       def publish_event(key, *data)
-        EventMachine.schedule do
-          @service.amqp_status.publish JSON.dump(data), routing_key: "#{@iface_id}.#{key}"
-        end
+        @service.amqp_status.publish JSON.dump(data), routing_key: "#{@iface_id}.#{key}"
       end
     end
   end

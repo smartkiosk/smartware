@@ -23,6 +23,9 @@ begin
 
   service.start
 
+  Smartware::Logging.logger.info "Smartware ready"
+
+  service.join
 rescue => e
   Smartware::Logging.logger.error e.message
   Smartware::Logging.logger.error e.backtrace.join("\n")

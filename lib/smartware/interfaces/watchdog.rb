@@ -12,7 +12,11 @@ module Smartware
         update_status :version, @device.version
       end
 
-      protected
+      def reboot_modem
+        @device.reboot_modem
+
+        update_status :error, @device.error
+      end
 
       def receive_request(command, *args)
         case command
@@ -22,14 +26,6 @@ module Smartware
         else
           super
         end
-      end
-
-      private
-
-      def reboot_modem
-        @device.reboot_modem
-
-        update_status :error, @device.error
       end
     end
   end

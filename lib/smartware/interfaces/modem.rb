@@ -13,6 +13,14 @@ module Smartware
         Smartware::Logging.logger.info 'Modem monitor started'
       end
 
+      def balance
+        self.status[:balance]
+      end
+
+      def signal_level
+        self.status[:signal_level]
+      end
+
       private
 
       def poll
