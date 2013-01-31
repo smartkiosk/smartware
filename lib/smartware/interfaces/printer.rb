@@ -16,6 +16,8 @@ module Smartware
         @markdown = Redcarpet::Markdown.new(@render)
       end
 
+      protected
+
       def receive_request(command, *args)
         case command
         when "test", "print", "print_markdown", "print_text"
@@ -41,6 +43,8 @@ module Smartware
           super
         end
       end
+
+      private
 
       def test
         print_markdown <<-EOS
@@ -75,7 +79,6 @@ EOS
         do_print data, max_time
       end
 
-      private
       def do_print(text, max_time)
         Smartware::Logging.logger.info "Started printing"
 

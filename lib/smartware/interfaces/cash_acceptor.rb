@@ -53,6 +53,8 @@ module Smartware
         Smartware::Logging.logger.info "Cash acceptor monitor started"
       end
 
+      private
+
       def open_session(limit_min = nil, limit_max = nil)
         @banknotes.clear
 
@@ -90,16 +92,6 @@ module Smartware
         @limit = nil
       end
 
-      def banknotes
-        @banknotes
-      end
-
-      def cashsum
-        self.banknotes.inject(0) do |result, (key, value)|
-          result + key.to_i * value.to_i
-        end
-      end
-
       def receive_request(command, *args)
         case command
         when "open"
@@ -112,8 +104,6 @@ module Smartware
           super
         end
       end
-
-      private
 
       def limit_satisfied?(sum)
         @limit.nil? or @limit.include? sum
@@ -140,6 +130,10 @@ module Smartware
       end
 
       def status_changed(error)
+        cashsum = @banknotes.inject(0) do |result, (key, value)|
+          result + key.to_i * value.to_i
+        end
+
         update_status :error, error
         update_status :model, @device.model
         update_status :version, @device.version
