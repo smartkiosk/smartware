@@ -9,8 +9,9 @@ module Smartware
 
         @status_mutex = Mutex.new
         @status = {
-          model: '',
-          version: ''
+          error: [ nil ],
+          model: [ '' ],
+          version: [ '' ]
         }
 
         iface = @config["name"]
@@ -34,15 +35,15 @@ module Smartware
       end
 
       def error
-        self.status[:error]
+        self.status[:error][0]
       end
 
       def model
-        self.status[:model]
+        self.status[:model][0]
       end
 
       def version
-        self.status[:version]
+        self.status[:version][0]
       end
 
       def status

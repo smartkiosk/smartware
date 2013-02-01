@@ -14,11 +14,11 @@ module Smartware
       end
 
       def balance
-        self.status[:balance]
+        self.status[:balance][0]
       end
 
       def signal_level
-        self.status[:signal_level]
+        self.status[:signal_level][0]
       end
 
       private
