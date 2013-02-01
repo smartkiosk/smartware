@@ -124,7 +124,7 @@ module Smartware
       end
 
       def schedule_status(ret = nil)
-        EventMachine.add_timer(0.5) do
+        EventMachine.add_timer(0.1) do
           EventMachine.defer(method(:poll),
                              method(:schedule_status))
         end
