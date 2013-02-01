@@ -21,6 +21,7 @@ module Smartware
           @returned = nil
           @status = nil
           @escrow_bill = nil
+          @casette = true
 
           @enabled_types = 0
 
@@ -41,9 +42,19 @@ module Smartware
           false
         end
 
+        def insert_casette
+          @casette = true
+        end
+
+        def eject_casette
+          @casette = false
+        end
+
         private
 
         def poll
+          error = nil
+
           case @dummy_state
           when :power_up
             @dummy_state = :initialize
@@ -52,7 +63,9 @@ module Smartware
             @dummy_state = :disabled
 
           when :disabled
-            if @enabled_types != 0
+            if !@casette
+              @dummy_state = :no_casette
+            elsif @enabled_types != 0
               @dummy_state = :idle
               @open.call
             end
@@ -61,6 +74,8 @@ module Smartware
             if @enabled_types == 0
               @dummy_state = :disabled
               @closed.call
+            elsif !@casette
+              @dummy_state = :no_casette
             else
               bill, index = @bill_types.each_with_index
                                        .select { |(obj, index)| enabled_types & (1 << index) != 0 }
@@ -86,9 +101,15 @@ module Smartware
             @dummy_state = :idle
             @return.call @escrow_bill
 
+          when :no_casette
+            error = Interface::CashAcceptor::DROP_CASETTE_OUT_OF_POSITION
+
+            if @casette
+              @dummy_state = :disabled
+            end
           end
 
-          @status.call nil
+          @status.call error
         end
       end
     end

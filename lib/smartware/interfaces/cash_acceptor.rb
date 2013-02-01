@@ -100,6 +100,14 @@ module Smartware
         end
       end
 
+      def insert_casette
+        @device.insert_casette
+      end
+
+      def eject_casette
+        @device.eject_casette
+      end
+
       private
 
       def limit_satisfied?(sum)

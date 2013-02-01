@@ -40,6 +40,13 @@ module Smartware
         @device.cashsum
       end
 
+      def self.insert_casette
+        @device.insert_casette
+      end
+
+      def self.eject_casette
+        @device.eject_casette
+      end
     end
   end
 end

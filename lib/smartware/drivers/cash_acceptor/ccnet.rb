@@ -289,6 +289,13 @@ module Smartware
           EventMachine.add_timer(interval, &method(:poll))
         end
 
+        def insert_casette
+
+        end
+
+        def eject_casette
+
+        end
       end
     end
   end

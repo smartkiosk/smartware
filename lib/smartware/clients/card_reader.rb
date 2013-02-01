@@ -36,6 +36,10 @@ module Smartware
         @device.card_inserted?
       end
 
+      def self.present?
+        @device.present?
+      end
+
       def self.start_accepting
         @device.start_accepting
       end
