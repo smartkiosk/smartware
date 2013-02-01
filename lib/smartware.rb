@@ -35,6 +35,10 @@ module Smartware
     yield self
   end
 
+  def self.card_reader
+    Smartware::Client::CardReader
+  end
+
   def self.cash_acceptor
     Smartware::Client::CashAcceptor
   end
