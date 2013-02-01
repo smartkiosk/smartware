@@ -60,7 +60,7 @@ module Smartware
           when :idle
             if @enabled_types == 0
               @dummy_state = :disabled
-              @close.call
+              @closed.call
             else
               bill, index = @bill_types.each_with_index
                                        .select { |(obj, index)| enabled_types & (1 << index) != 0 }

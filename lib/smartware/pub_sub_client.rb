@@ -52,7 +52,7 @@ module Smartware
 
     def broken
       @connection = nil
-      @reconnect_timer = EventMachine.set_timer 1, &method(:attempt)
+      @reconnect_timer = EventMachine.add_timer 1, &method(:attempt)
     end
 
     def deliver(key, *args)
