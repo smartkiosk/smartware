@@ -23,81 +23,109 @@ module Smartware
 
         update_status :model, @device.model
         update_status :version, @device.version
-        update_status :status, :not_ready
+        update_status :card_inserted, false, nil, nil, nil
+
+        @state = :inactive
+        @open = false
+        @mutex = Mutex.new
+        @cvar = ConditionVariable.new
 
         schedule_status
       end
 
-      def card_inserted?
-        ret = @status[:status] == :card_inserted
-        update_status :error, nil
-        ret
-      rescue CardReaderError => e
-        update_status :error, e.code
-        nil
+      def open
+        @mutex.synchronize do
+          @open = true
+          @cvar.wait(@mutex)
+        end
       end
 
-      def present?
-        status = @status[:status]
-        ret = status == :card_inserted || status == :card_at_gate
-        update_status :error, nil
-        ret
-      rescue CardReaderError => e
-        update_status :error, e.code
-        nil
+      def close
+        @mutex.synchronize do
+          @open = false
+          @cvar.wait(@mutex)
+        end
       end
 
-      def start_accepting
-        @device.accepting = true
-        update_status :error, nil
-        true
-      rescue CardReaderError => e
-        update_status :error, e.code
-        false
-      end
-
-      def stop_accepting
-        @device.accepting = false
-        update_status :error, nil
-        true
-      rescue CardReaderError => e
-        update_status :error, e.code
-        false
-      end
-
-      def eject
-        @device.eject
-
-        update_status :error, nil
-        true
-      rescue CardReaderError => e
-        update_status :error, e.code
-        false
-      end
-
-      def capture
-        @device.capture
-        update_status :error, nil
-        true
-      rescue CardReaderError => e
-        update_status :error, e.code
-        false
-      end
-
-      def read_magstrip
-        ret = @device.read_magstrip
-        update_status :error, nil
-        ret
-      rescue CardReaderError => e
-        update_status :error, e.code
-        nil
+      def card_inserted
+        @status[:card_inserted]
       end
 
       private
 
+      def poll
+        open = nil
+        @mutex.synchronize do
+          open = @open
+          @cvar.broadcast
+        end
+
+        begin
+          status = @device.status
+
+          case @state
+          when :failure
+            if status == :ready
+              @state = :inactive
+              update_status :error, nil
+            end
+
+          when :inactive
+            if open
+              @device.accepting = true
+              @state = :waiting_card
+            end
+
+          when :waiting_card
+            if !open
+              @device.accepting = false
+              @device.eject rescue nil
+              @state = :waiting_eject
+
+            elsif status == :card_inserted
+              @state = :card_inside
+              @device.accepting = false
+
+              track1, track2, = @device.read_magstrip
+              if track1.nil? || track2.nil?
+                @device.eject rescue nil
+                @state = :waiting_eject
+              else
+                update_status :card_inserted, true, false, track1, track2
+              end
+            end
+
+          when :card_inside
+            if !open || status != :card_inserted
+              update_status :card_inserted, false, nil, nil, nil
+              @device.eject rescue nil
+              @state = :waiting_eject
+            end
+
+          when :waiting_eject
+            if status == :ready || status == :not_ready
+              if open
+                @state = :waiting_card
+                @device.accepting = true
+              else
+                @state = :inactive
+              end
+            end
+          end
+        rescue CardReaderError => e
+          Logging.logger.error "Card reader error: #{e}"
+
+          @device.eject rescue nil
+          @device.accepting = false rescue nil
+
+          @state = :failure
+          update_status :error, e.code
+        end
+      end
+
       def schedule_status(ret = nil)
         EventMachine.add_timer(0.5) do
-          EventMachine.defer(->() { update_status :status, @device.status },
+          EventMachine.defer(method(:poll),
                              method(:schedule_status))
         end
       end

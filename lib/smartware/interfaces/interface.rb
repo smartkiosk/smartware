@@ -28,7 +28,7 @@ module Smartware
       def repush_events(connection)
         @status_mutex.synchronize do
           @status.each do |key, value|
-            connection.publish_event "#{@iface_id}.#{key}", value
+            connection.publish_event "#{@iface_id}.#{key}", *value
           end
         end
       end
@@ -51,11 +51,11 @@ module Smartware
 
       protected
 
-      def update_status(key, value)
+      def update_status(key, *value)
         @status_mutex.synchronize do
           if @status[key] != value
             @status[key] = value
-            publish_event key, value
+            publish_event key, *value
           end
         end
       end

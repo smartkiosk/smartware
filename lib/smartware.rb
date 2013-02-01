@@ -55,6 +55,10 @@ module Smartware
     Smartware::Client::Watchdog
   end
 
+  def self.card_reader
+    Smartware::Client::CardReader
+  end
+
   def self.subscribe(&block)
     Smartware::PubSubClient.destroy_static_client
     client = Smartware::PubSubClient.create_static_client
