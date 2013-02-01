@@ -23,20 +23,12 @@ module Smartware
         @device = Smartware::Driver.const_get(iface.to_s)
                                    .const_get(driver.to_s)
                                    .new(config)
-
-        @request_queue = @service.amqp_channel.queue(@iface_id, auto_delete: true)
-        @request_queue.bind(@service.amqp_commands, routing_key: @iface_id)
-        @request_queue.subscribe do |metadata, request|
-          receive_request *JSON.load(request)
-        end
       end
 
-      def general(message)
-        if message == "update"
-          @status_mutex.synchronize do
-            @status.each do |key, value|
-              publish_event key, value
-            end
+      def repush_events(connection)
+        @status_mutex.synchronize do
+          @status.each do |key, value|
+            connection.publish_event "#{@iface_id}.#{key}", value
           end
         end
       end
@@ -73,7 +65,7 @@ module Smartware
       end
 
       def publish_event(key, *data)
-        @service.amqp_status.publish JSON.dump(data), routing_key: "#{@iface_id}.#{key}"
+        @service.publish_event "#{@iface_id}.#{key}", *data
       end
     end
   end

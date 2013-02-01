@@ -6,7 +6,6 @@ require 'redcarpet'
 require 'stringio'
 require 'eventmachine'
 require 'serialport'
-require 'amqp'
 require 'json'
 
 require 'smartkiosk/common'
@@ -27,6 +26,8 @@ require 'smartware/interfaces/printer'
 require 'smartware/interfaces/watchdog'
 require 'smartware/interfaces/card_reader'
 require 'smartware/connection_monitor'
+require 'smartware/pub_sub_server'
+require 'smartware/pub_sub_client'
 
 module Smartware
 
@@ -50,4 +51,15 @@ module Smartware
     Smartware::Client::Watchdog
   end
 
+  def self.subscribe(&block)
+    Smartware::PubSubClient.destroy_static_client
+    client = Smartware::PubSubClient.create_static_client
+    client.receiver = block
+    client.start
+    client
+  end
+
+  def self.unsubscribe
+    Smartware::PubSubClient.destroy_static_client
+  end
 end

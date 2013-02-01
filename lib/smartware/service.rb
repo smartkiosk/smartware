@@ -1,31 +1,25 @@
 module Smartware
   class Service
-    attr_reader :config, :amqp_connection, :amqp_channel
-    attr_reader :amqp_general, :amqp_status, :amqp_commands
+    attr_reader :config
 
     def initialize(config_file)
       @config = YAML.load File.read(config_file)
       @interfaces = []
       @devices = []
-      @amqp_connection = nil
-      @amqp_channel = nil
-      @amqp_commands = nil
     end
 
     def start
       EventMachine.epoll
       EventMachine.run do
-        @amqp_connection = AMQP.connect host: @config["broker"]
-        @amqp_channel = AMQP::Channel.new @connection
-        @amqp_general = @amqp_channel.fanout "smartware.general"
-        @amqp_status = @amqp_channel.topic "smartware.status"
-        @amqp_commands = @amqp_channel.direct "smartware.commands"
+        @event_channel = EventMachine::Channel.new
+        @event_channel.subscribe do |(key, args)|
+          @pubsub.publish_event key, *args
+        end
 
-        general_queue = @amqp_channel.queue "smartware.general"
-        general_queue.bind @amqp_general
-        general_queue.subscribe do |metadata, message|
+        @pubsub = PubSubServer.new "localhost", (@config["pubsub_port"] || 6100)
+        @pubsub.repush = ->(connection) do
           @devices.each do |device|
-            device.general message
+            device.repush_events connection
           end
         end
 
@@ -51,15 +45,16 @@ module Smartware
           end
         end
       end
+    end
 
+    def publish_event(key, *args)
+      @event_channel.push [key, args]
     end
 
     def stop
       @interfaces.each &:stop_service
 
-      @amqp_connection.close do
-        EventMachine.stop
-      end
+      EventMachine.stop
     end
 
     def join
@@ -69,4 +64,3 @@ module Smartware
     end
   end
 end
-

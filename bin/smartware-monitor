@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'bundler/setup'
+require 'smartware'
+
+EventMachine.run do
+  Smartware.subscribe do |key, *value|
+    puts "#{key}: #{value.map(&:inspect).join(", ")}"
+  end
+
+  puts "Receiving Smartware events."
+end
