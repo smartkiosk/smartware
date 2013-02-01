@@ -100,10 +100,6 @@ module Smartware
         end
       end
 
-      def receive_request(command, *args)
-        send command, *args
-      end
-
       private
 
       def limit_satisfied?(sum)

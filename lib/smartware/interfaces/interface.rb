@@ -60,10 +60,6 @@ module Smartware
         end
       end
 
-      def receive_request(*request)
-        Smartware::Logging.logger.warn "#{self.class.name} received request #{request.inspect}, but interface is not AMQP-compatible yet."
-      end
-
       def publish_event(key, *data)
         @service.publish_event "#{@iface_id}.#{key}", *data
       end
