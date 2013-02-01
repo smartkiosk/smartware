@@ -6,11 +6,11 @@ require 'smartware/version'
 Gem::Specification.new do |gem|
   gem.name          = "smartware"
   gem.version       = Smartware::VERSION
-  gem.authors       = ["Evgeni Sudarchikov", "Boris Staal"]
-  gem.email         = ["e.sudarchikov@roundlake.ru", "boris@roundlake.ru"]
+  gem.authors       = ["Evgeni Sudarchikov", "Boris Staal", 'Sergey Gridasov']
+  gem.email         = ["e.sudarchikov@roundlake.ru", "boris@roundlake.ru", 'grindars@gmail.com']
   gem.description   = %q{Smartware is the Smartkiosk hardware control daemon}
   gem.summary       = gem.description
-  gem.homepage      = "https://github.com/roundlake/smartware"
+  gem.homepage      = "https://github.com/smartkiosk/smartware"
 
   gem.files         = `git ls-files`.split($/)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
