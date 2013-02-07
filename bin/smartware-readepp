@@ -40,14 +40,14 @@ def input_event(type, data)
 
   when "backspace"
     unless @linebuf.length == 0
-      print "\b"
+      print "\b \b"
       @linebuf.slice! -1, 1
     end
   end
 end
 
 def exit_with_error(error)
-  print "\b" * (@linebuf.length * 2)
+  print "\b \b" * (@linebuf.length * 2)
   puts "smartware-readepp: #{error}"
 
   exit 1

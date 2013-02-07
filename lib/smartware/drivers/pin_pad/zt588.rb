@@ -93,7 +93,7 @@ module Smartware
           1 2 3 \e
           4 5 6 \b
           7 8 9 \a
-          . 0 * \r
+          . 0 # \r
           A C E G
           B D F H
         }.join
@@ -349,6 +349,10 @@ module Smartware
 
           when "\a", 'A'..'H'
             # unlabeled button and application buttons
+
+          when '#'
+            @input_event.call :input, '0'
+            @input_event.call :input, '0'
 
           else
             @input_event.call :input, char
