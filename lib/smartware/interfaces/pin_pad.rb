@@ -3,10 +3,20 @@ module Smartware
     class PinPad < Interface
       class PinPadError < RuntimeError; end
 
+      # Error codes
       DEVICE_NOT_READY = 1
       DEVICE_ERROR     = 2
 
+      # Input modes
       INPUT_PLAINTEXT  = 1
+      INPUT_PIN        = 2
+
+      # Pin block formats
+      ASCII            = 0
+      ISO9564_0        = 1
+      ISO9564_1        = 2
+      ISO9564_3        = 3
+      IBM3624          = 4
 
       def self.safe_proxy(*methods)
         methods.each do |method|
@@ -25,6 +35,7 @@ module Smartware
       end
 
       safe_proxy :wipe, :restart, :start_input, :stop_input
+      safe_proxy :load_working_keys, :get_pin
 
       def initialize(config, service)
         super

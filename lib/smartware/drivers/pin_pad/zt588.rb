@@ -10,9 +10,12 @@ module Smartware
 
         # Commands
         LOAD_PLAIN_KEY      = '1'
+        LOAD_ENCRYPTED_KEY  = '2'
         USER_INFORMATION    = '3'
         LOAD_SCANCODE_TABLE = '4'
         CONTROL             = '5'
+        START_PIN_INPUT     = '6'
+        GET_PIN_VALUE       = '7'
         AUTH = ':'
 
         # Control commands and values
@@ -58,18 +61,35 @@ module Smartware
           55 => 115200
         }
 
-
         # Authentication data
         UID = "0000000000000000"
 
+        # Keys
         KEY_TMK = 0x00
         KEY_IMK = 0x80
 
-        KEY_TYPE_IMK_TMK = 1
+        # Key types, etc
+        KEY_TYPE_IMK  = 1
+        KEY_TYPE_TMK  = 2
+        KEY_TYPE_TPK  = 3
+
+        KEY_TYPE_TAK  = 5
+        KEY_TYPE_TDK  = 6
+        KEY_TYPE_TDEK = 7
+        KEY_TYPE_TDDK = 8
+        KEY_TYPE_TDSK = 9
 
         KEY_LENGTH_SINGLE = 0
         KEY_LENGTH_DOUBLE = 1
         KEY_LENGTH_TRIPLE = 2
+
+        PIN_TYPE_MAP = {
+          Smartware::Interface::PinPad::ASCII     => '@',
+          Smartware::Interface::PinPad::ISO9564_0 => ' ',
+          Smartware::Interface::PinPad::ISO9564_1 => '!',
+          Smartware::Interface::PinPad::ISO9564_3 => '#',
+          Smartware::Interface::PinPad::IBM3624   => '0'
+        }
 
         DEFAULT_CONFIG = {
           "sound"              => true,
@@ -123,6 +143,7 @@ module Smartware
         def initialize(config)
           @config = DEFAULT_CONFIG.merge(config)
           @plain_input = false
+          @auto_stop = nil
 
           @port = SerialPort.new(config["port"], 9600, 8, 1, SerialPort::NONE)
           @port.flow_control = SerialPort::HARD
@@ -161,11 +182,20 @@ module Smartware
           initialize_device
         end
 
-        def start_input(mode)
+        def start_input(mode, options = {})
           case mode
           when Interface::PinPad::INPUT_PLAINTEXT
             @plain_input = true
+            @auto_stop = nil
             control MISC, ENABLE_INPUT
+
+          when Interface::PinPad::INPUT_PIN
+            tpk = 0x40 + 8 * options[:key_set]
+            @plain_input = false
+            @auto_stop = options[:length]
+
+            start_pin_input tpk, options[:format], 0, options[:length],
+                            options[:pan]
 
           else
             raise ZT588Error, "unsupported input mode: #{mode}"
@@ -175,9 +205,42 @@ module Smartware
         end
 
         def stop_input
-          control MISC, DISABLE_INPUT
-          @plain_input = false
+          do_stop_input
           @input_event.call :cancel
+        end
+
+        def start_pin_input(key, format, hint_code, length, pan)
+          raise "unsupported PIN block format" unless PIN_TYPE_MAP.include? format
+
+          safe_command(START_PIN_INPUT,
+                       sprintf("%02X%c%d%02d%s",
+                               key,
+                               PIN_TYPE_MAP[format],
+                               hint_code,
+                               length,
+                               pan))
+        end
+
+        def load_working_keys(set, tpk_under_tmk)
+          raise "unsupported key set" unless (0..7).include? set
+
+          tpk = 0x40 + 8 * set
+          tpk_verify = load_encrypted_key tpk, KEY_TMK, KEY_TYPE_TPK, nil,
+                                          tpk_under_tmk
+
+          return tpk_verify
+        end
+
+        def get_pin
+          response = safe_command GET_PIN_VALUE
+
+          p response
+
+          [
+            response.slice(1, 2).to_i, # Track
+            response.slice(3, 2).to_i, # Length
+            bin(response[5..-1])       # Block
+          ]
         end
 
         private
@@ -195,8 +258,40 @@ module Smartware
           bin response[1..-1]
         end
 
+        def probe_length(data)
+          case data.length
+          when 8
+            KEY_LENGTH_SINGLE
+
+          when 16
+            KEY_LENGTH_DOUBLE
+
+          when 24
+            KEY_LENGTH_TRIPLE
+
+          else
+            raise "unsupported key length: #{data.bytes}"
+          end
+        end
+
+        def erase_key(key)
+          safe_command LOAD_ENCRYPTED_KEY, sprintf("%02X%02X%d%d", 0, key, 0, 0)
+          nil
+        end
+
+        def load_encrypted_key(key, under, type, length, data)
+          length = probe_length(data) if length.nil?
+          response = safe_command(LOAD_ENCRYPTED_KEY,
+                                  sprintf("%02X%02X%d%d", under, key, type, length + 1),
+                                  hex(data))
+          bin response[1..-1]
+        end
+
         def load_plain_key(key_index, key_type, length, data)
-          response = safe_command(LOAD_PLAIN_KEY, sprintf("%02X%u%u", key_index, key_type, length), hex(data))
+          length = probe_length(data) if length.nil?
+          response = safe_command(LOAD_PLAIN_KEY,
+                                  sprintf("%02X%u%u", key_index, key_type, length),
+                                  hex(data))
 
           verify = bin response[1..-1]
 
@@ -275,7 +370,7 @@ module Smartware
           safe_command LOAD_SCANCODE_TABLE, hex(SCANCODES)
           control MISC,                     @config["sound"] ? ENABLE_SOUND : DISABLE_SOUND
           control SET_INPUT_TIME_LIMIT,     @config["input_time_limit"].chr
-          control SET_PIN_MASK,             '*'
+          control SET_PIN_MASK,             "\xFF"
           control SET_MIN_LENGTH,           @config["minimum_pin_length"].chr
           control SET_MAX_LENGTH,           @config["maximum_pin_length"].chr
           control SET_BEEP_TIME,            (@config["beep_time"] * 100).round.chr
@@ -293,7 +388,7 @@ module Smartware
               return if imk.nil?
 
               wipe
-              load_plain_key KEY_IMK, KEY_TYPE_IMK_TMK, KEY_LENGTH_TRIPLE, imk
+              load_plain_key KEY_IMK, KEY_TYPE_IMK, KEY_LENGTH_TRIPLE, imk
               imk.slice! 16
 
               challenge = auth AUTH_GET_CHALLENGE, "0000000000000000"
@@ -302,7 +397,8 @@ module Smartware
               verify    = auth AUTH_WITH_IMK, response
               raise ZT588Error, "verification failed" if check != verify
 
-              load_plain_key KEY_TMK, KEY_TYPE_IMK_TMK, KEY_LENGTH_DOUBLE, tmk
+              # it's likely that TMK is actually IMK, and IMK is something else
+              load_plain_key KEY_TMK, KEY_TYPE_IMK, KEY_LENGTH_DOUBLE, tmk
               @post_configuration.call
 
               restart
@@ -324,27 +420,34 @@ module Smartware
           e.backtrace.each { |line| Logging.logger.error line }
         end
 
-        def handle_keypad(char)
-          Logging.logger.debug "ZT588: keypad #{char}"
+        def do_stop_input
+          @plain_input = false
+          @auto_stop = nil
+          control MISC, DISABLE_INPUT
+        end
 
-          case char
-          when "\e"
-            if @plain_input
+        def do_auto_stop(chars = 1)
+          unless @auto_stop.nil?
+            @auto_stop -= chars
+            if @auto_stop <= 0
               @plain_input = false
-              control MISC, DISABLE_INPUT
+              @auto_stop = nil
+              @input_event.call :accept
             end
+          end
+        end
 
+        def handle_keypad(char)
+          case char
+          when "\e", "\x80"
+            do_stop_input if @plain_input
             @input_event.call :cancel
 
           when "\b"
             @input_event.call :backspace
 
           when "\r"
-            if @plain_input
-              @plain_input = false
-              control MISC, DISABLE_INPUT
-            end
-
+            do_stop_input if @plain_input
             @input_event.call :accept
 
           when "\a", 'A'..'H'
@@ -353,9 +456,11 @@ module Smartware
           when '#'
             @input_event.call :input, '0'
             @input_event.call :input, '0'
+            do_auto_stop 2
 
           else
             @input_event.call :input, char
+            do_auto_stop 1
           end
 
         end
