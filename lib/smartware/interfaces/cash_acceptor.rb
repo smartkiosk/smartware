@@ -53,7 +53,7 @@ module Smartware
         Smartware::Logging.logger.info "Cash acceptor monitor started"
       end
 
-      def open_session(limit_min, limit_max)
+      def open(limit_min = nil, limit_max = nil)
         @banknotes.clear
 
         if limit_min.nil? || limit_max.nil?
@@ -80,7 +80,7 @@ module Smartware
         end
       end
 
-      def close_session
+      def close
         Smartware::Logging.logger.debug "Session closed"
 
         EventMachine.schedule do
@@ -94,7 +94,7 @@ module Smartware
         @banknotes
       end
 
-      def cashsum
+      def sum
         self.banknotes.inject(0) do |result, (key, value)|
           result + key.to_i * value.to_i
         end
@@ -115,7 +115,7 @@ module Smartware
       end
 
       def escrow(banknote)
-        limit_satisfied?(self.cashsum + banknote.value)
+        limit_satisfied?(self.sum + banknote.value)
       end
 
       def stacked(banknote)
@@ -139,7 +139,7 @@ module Smartware
         update_status :model, @device.model
         update_status :version, @device.version
         update_status :casette, error != DROP_CASETTE_OUT_OF_POSITION
-        update_status :cashsum, cashsum
+        update_status :cashsum, sum
       end
 
       def device_open

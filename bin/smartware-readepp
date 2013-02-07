@@ -1,0 +1,61 @@
+#!/usr/bin/env ruby
+
+require "rubygems"
+require "bundler/setup"
+require "smartware"
+
+def receive_event(event, *args)
+  device, event = event.split "."
+  return if device != "pin_pad"
+
+  case event
+  when "error"
+    type, = args
+    if type.nil? && !@reading
+      @reading = true
+      print "> "
+      Smartware.pin_pad.start_input(Smartware::Interface::PinPad::INPUT_PLAINTEXT)
+    elsif !type.nil? && @reading
+      exit_with_error "pinpad error #{type}"
+    end
+
+  when "input"
+    input_event *args
+  end
+end
+
+def input_event(type, data)
+  case type
+  when "cancel"
+    exit_with_error "cancelled"
+
+  when "accept"
+    print "\n"
+    STDERR.puts @linebuf
+    exit 0
+
+  when "input"
+    print data
+    @linebuf << data
+
+  when "backspace"
+    unless @linebuf.length == 0
+      print "\b"
+      @linebuf.slice! -1, 1
+    end
+  end
+end
+
+def exit_with_error(error)
+  print "\b" * (@linebuf.length * 2)
+  puts "smartware-readepp: #{error}"
+
+  exit 1
+end
+
+@reading = false
+@linebuf = ""
+
+EventMachine.run do
+  Smartware.subscribe &method(:receive_event)
+end

@@ -39,6 +39,8 @@ module Smartware
       EventMachine.next_tick { check_dsr! }
     end
 
+    protected
+
     def check_dsr!
       if @io.dsr == 0
         @state = :drop
@@ -51,8 +53,6 @@ module Smartware
         end
       end
     end
-
-    protected
 
     def remove_timeouts
       unless @command_timer.nil?
