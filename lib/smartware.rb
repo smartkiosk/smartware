@@ -7,6 +7,7 @@ require 'stringio'
 require 'eventmachine'
 require 'serialport'
 require 'json'
+require 'set'
 
 require 'smartkiosk/common'
 

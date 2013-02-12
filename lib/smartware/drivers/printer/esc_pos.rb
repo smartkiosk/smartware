@@ -32,10 +32,9 @@ module Smartware
 
         def query
           begin
-            @sp.write QUERY
-            magic, paper_status, user_status, recoverable, unrecoverable = read_response(6).unpack("nC*")
+            paper_status, user_status, recoverable, unrecoverable = do_query
 
-            raise "invalid magic: #{magic.to_s 16}" if magic != 0x100F
+            raise "no response to query" if paper_status.nil?
 
             if unrecoverable != 0
               @status = :error
@@ -59,19 +58,21 @@ module Smartware
             end
 
             @sp.write MODEL_QUERY
-            printer_model, = read_response(1).unpack("C*")
+            printer_model = read_response(1)
+            raise "no response to model query" if printer_model.nil?
+
+            printer_model, = printer_model.unpack("C*")
 
             @sp.write VERSION_QUERY
             printer_version = read_response(4)
+            raise "no response to version querty" if printer_version.nil?
 
             @model = "ESC/POS Printer #{printer_model.to_s 16}"
-            @version = "ROM #{printer_version}"
+            @version = "ROM #{printer_version.inspect}"
 
           rescue => e
             Smartware::Logging.logger.warn "Printer communication error: #{e}"
             e.backtrace.each { |line| Smartware::Logging.logger.warn line }
-
-            @buf = ""
 
             @error = Interface::Printer::COMMUNICATION_ERROR
             @status = :error
@@ -79,25 +80,49 @@ module Smartware
         end
 
         def print(data)
-          begin
-            @sp.write data
+          start = Time.now
 
-            start = Time.now
+          data.force_encoding('BINARY')
+
+          begin
+            data.split(/(\n)/, -1).each do |line|
+              @sp.write line
+
+              loop do
+                now = Time.now
+                # timeout exceeded
+                return if now - start > 10
+
+                status = do_query
+                next if status.nil?
+
+                paper_status, user_status, recoverable, unrecoverable = status
+
+                # Unrecoverable error or out of paper
+                return if unrecoverable != 0 || (paper_status & 1) != 0
+
+                # No error - continue printing
+                break if (recoverable == 0) && ((user_status & 3) == 0)
+              end
+            end
 
             loop do
               now = Time.now
-              break if now - start > 30
+              # timeout exceeded
+              return if now - start > 10
 
-              @sp.write QUERY
-              magic, paper_status, user_status, recoverable, unrecoverable = read_response(6).unpack("nC*")
+              status = do_query
+              next if status.nil?
 
-              raise "invalid magic: #{magic.to_s 16}" if magic != 0x100F
+              paper_status, user_status, recoverable, unrecoverable = status
 
               # paper not in motion
               break if (user_status & 8) == 0
             end
+
           rescue => e
-            Smartware::Logging.logger.warn "Printer communication error: #{e}"
+            Smartware::Logging.logger.error "Printer communication error: #{e}"
+            e.backtrace.each { |line| Smartware::Logging.logger.error line }
           end
         end
 
@@ -107,8 +132,25 @@ module Smartware
 
         private
 
-        def read_response(bytes)
+        def do_query
+          # flush driver buffer
+          read_response(65536, 0)
+          @buf.clear
+
+          @sp.write QUERY
+          response = read_response(6).unpack("nC*")
+          return nil if response.nil?
+
+          magic, *rest = response
+          raise "invalid magic: #{magic.to_s 16}. Response: #{response}, buffer: #{@buf}" if magic != 0x100F
+
+          rest
+        end
+
+        def read_response(bytes, timeout = 1.0)
           while @buf.length < bytes
+            return nil if IO.select([ @sp ], [], [], timeout).nil?
+
             @buf << @sp.sysread(128)
           end
 
