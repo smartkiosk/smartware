@@ -170,11 +170,13 @@ module Smartware
           @user_data = info[:user_info]
         end
 
+=begin unsafe - enable at your own risk
         def wipe
           control MISC, WIPE
           sleep 3
           initialize_device true
         end
+=end
 
         def restart
           control MISC, RESET
@@ -382,7 +384,7 @@ module Smartware
           if !reload
             if info[:settings][:blank]
               Logging.logger.warn "ZT588: IMK not loaded, pinpad unoperational"
-
+=begin unsafe - enable at your own risk
               imk, tmk = @imk_source.call
 
               return if imk.nil?
@@ -402,14 +404,24 @@ module Smartware
               @post_configuration.call
 
               restart
+=end
             else
-              random    = auth AUTH_GET_CHALLENGE, "0000000000000000"
-              challenge = auth KEY_TMK, random
-              response  = calculate_response challenge, UID
-              check     = calculate_response response, UID
-              verify    = auth AUTH_WITH_TMK, response
-              raise ZT588Error, "verification failed" if check != verify
-              Logging.logger.debug "ZT588: authenticated"
+              [0x10, 0x20, 0x30].each do |key|
+                p key
+                begin
+                  random    = auth AUTH_GET_CHALLENGE, "0000000000000000"
+                  challenge = auth key, random
+                  response  = calculate_response challenge, UID
+                  check     = calculate_response response, UID
+                  verify    = auth AUTH_WITH_TMK, response
+                  raise ZT588Error, "verification failed" if check != verify
+                  Logging.logger.debug "ZT588: authenticated"
+
+                  break
+                rescue => e
+                  p e
+                end
+              end
 
               @device_ready.call
             end

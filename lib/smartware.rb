@@ -23,6 +23,7 @@ require 'smartware/interfaces/printer'
 require 'smartware/interfaces/watchdog'
 require 'smartware/interfaces/card_reader'
 require 'smartware/interfaces/pin_pad'
+require 'smartware/interfaces/user_interface'
 require 'smartware/connection_monitor'
 require 'smartware/pub_sub_server'
 require 'smartware/pub_sub_client'
@@ -55,6 +56,10 @@ module Smartware
 
   def self.pin_pad
     Smartware::Client.instance('druby://localhost:6006')
+  end
+
+  def self.user_interface
+      Smartware::Client.instance('druby://localhost:6007')
   end
 
   def self.subscribe(&block)

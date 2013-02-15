@@ -14,4 +14,7 @@ interfaces:
   - name: Printer
     uri: druby://localhost:6005
     driver: Dummy
+  - name: UserInterface
+    uri: druby://localhost:6007
+    driver: Dummy
 connection_timeout: 60
