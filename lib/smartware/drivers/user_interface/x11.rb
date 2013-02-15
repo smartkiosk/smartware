@@ -16,7 +16,7 @@ module Smartware
         end
 
         def restart_ui
-          system "pkill", "-U", @config["user"], "xinit"
+          system "pkill", "-U", @user, "xinit"
         end
 
         def screenshot
