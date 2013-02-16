@@ -4,6 +4,7 @@ module Smartware
     module Modem
 
       class Dummy
+        attr_accessor :account
 
         def initialize(config)
 
