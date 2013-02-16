@@ -41,10 +41,10 @@ module Smartware
         end
       end
 
-      def account(sent, received, time)
+      def account(started, sent, received, time)
         Smartware::Logging.logger.debug "recording session: #{sent} upstream #{received} downstream, #{time} seconds"
 
-        publish_reliable_event 'accounting', sent, received, time
+        publish_reliable_event 'accounting', started, sent, received, time
       end
     end
   end

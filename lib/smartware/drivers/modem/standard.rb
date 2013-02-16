@@ -18,15 +18,22 @@ module Smartware
 
             Logging.logger.debug "pppd: #{line}"
 
-            if line =~ /^Sent ([0-9]+) bytes, received ([0-9]+) bytes.$/
+            case line
+            when /authentication succeeded$/
+              @started = Time.now.to_i
+
+            when /^Sent ([0-9]+) bytes, received ([0-9]+) bytes.$/
               @sent = $1.to_i
               @received = $2.to_i
-            elsif line =~ /^Connect time ([0-9.]+) minutes.$/
+
+            when /^Connect time ([0-9.]+) minutes.$/
               @time = ($1.to_f * 60).round
-            elsif line == "Connection terminated."
+
+            when "Connection terminated."
               begin
-                @device.account.call @sent, @received, @time
+                @device.account.call @started, @sent, @received, @time
               ensure
+                @started = nil
                 @sent = nil
                 @received = nil
                 @time = nil
