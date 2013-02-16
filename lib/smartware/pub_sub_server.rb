@@ -80,7 +80,7 @@ module Smartware
       @redis.hset "smartware:reliable_events", id, JSON.dump({ key: key, args: args })
 
       @connections.each do |connection|
-        connection.publish_reliable_event id, key, args
+        connection.publish_reliable_event id, key, *args
       end
     end
 
