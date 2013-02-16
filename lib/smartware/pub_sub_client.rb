@@ -2,6 +2,39 @@ require "em/protocols/line_protocol"
 
 module Smartware
   class PubSubClient
+    class Message
+      attr_reader :key, :args
+
+      def initialize(reliable_id, key, args, callback)
+        @reliable_id = reliable_id
+        @key = key
+        @args = args
+        @callback = callback
+      end
+
+      def reliable?
+        !@reliable_id.nil?
+      end
+
+      def id
+        @reliable_id
+      end
+
+      def acknowlege
+        raise "message is not reliable" if @reliable_id.nil?
+
+        @callback.call @reliable_id
+      end
+
+      def [](index)
+        @args[index]
+      end
+
+      def to_a
+        @args
+      end
+    end
+
     class PubSubHandler < EventMachine::Connection
       include EventMachine::Protocols::LineProtocol
 
@@ -16,7 +49,11 @@ module Smartware
       def receive_line(line)
         data = JSON.load line
 
-        @client.deliver data["key"], *data["args"]
+        @client.receive data
+      end
+
+      def send_record(data)
+        send_data(JSON.dump(data) + "\r\n")
       end
     end
 
@@ -55,8 +92,16 @@ module Smartware
       @reconnect_timer = EventMachine.add_timer 1, &method(:attempt)
     end
 
-    def deliver(key, *args)
-      @receiver.call key, *args
+    def receive(data)
+      message = Message.new data["reliable_id"],
+                            data["key"],
+                            data["args"],
+                            ->(id) do
+
+        @connection.send_record command: "acknowlege", id: id
+      end
+
+      @receiver.call message
     end
 
     private

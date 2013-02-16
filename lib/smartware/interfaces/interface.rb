@@ -74,6 +74,10 @@ module Smartware
       def publish_event(key, *data)
         @service.publish_event "#{@iface_id}.#{key}", *data
       end
+
+      def publish_reliable_event(key, *data)
+        @service.publish_reliable_event "#{@iface_id}.#{key}", *data
+      end
     end
   end
 end

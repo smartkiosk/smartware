@@ -17,6 +17,11 @@ module Smartware
           @pubsub.publish_event key, *args
         end
 
+        @reliable_event_channel = EventMachine::Channel.new
+        @reliable_event_channel.subscribe do |(key, args)|
+          @pubsub.publish_reliable_event key, *args
+        end
+
         @pubsub = PubSubServer.new "localhost", (@config["pubsub_port"] || 6100)
         @pubsub.repush = ->(connection) do
           @devices.each do |device|
@@ -50,6 +55,10 @@ module Smartware
 
     def publish_event(key, *args)
       @event_channel.push [key, args]
+    end
+
+    def publish_reliable_event(key, *args)
+      @reliable_event_channel.push [key, args]
     end
 
     def stop

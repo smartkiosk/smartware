@@ -8,6 +8,7 @@ require 'eventmachine'
 require 'serialport'
 require 'json'
 require 'set'
+require 'redis'
 
 require 'smartkiosk/common'
 

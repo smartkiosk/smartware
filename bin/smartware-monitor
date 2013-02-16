@@ -5,8 +5,16 @@ require 'bundler/setup'
 require 'smartware'
 
 EventMachine.run do
-  Smartware.subscribe do |key, *value|
-    puts "#{key}: #{value.map(&:inspect).join(", ")}"
+  Smartware.subscribe do |message|
+    print "#{message.key}"
+
+    if message.reliable?
+      print " (reliable, #{message.id})"
+    end
+
+    puts ": #{message.args.map(&:inspect).join(", ")}"
+
+    message.acknowlege if ARGV[0] == "ack" && message.reliable?
   end
 
   puts "Receiving Smartware events."

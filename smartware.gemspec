@@ -27,4 +27,5 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'eventmachine'
   gem.add_dependency 'chunky_png'
   gem.add_dependency 'oily_png'
+  gem.add_dependency 'redis'
 end

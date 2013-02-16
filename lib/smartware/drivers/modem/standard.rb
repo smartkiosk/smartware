@@ -17,10 +17,27 @@ module Smartware
             line.rstrip!
 
             Logging.logger.debug "pppd: #{line}"
+
+            if line =~ /^Sent ([0-9]+) bytes, received ([0-9]+) bytes.$/
+              @sent = $1.to_i
+              @received = $2.to_i
+            elsif line =~ /^Connect time ([0-9.]+) minutes.$/
+              @time = ($1.to_f * 60).round
+            elsif line == "Connection terminated."
+              begin
+                @device.account.call @sent, @received, @time
+              ensure
+                @sent = nil
+                @received = nil
+                @time = nil
+              end
+            end
+
           end
         end
 
         attr_reader :error, :model, :balance, :version
+        attr_accessor :account
 
         def initialize(config)
           @port = config["port"]
@@ -44,6 +61,7 @@ module Smartware
           @ppp_state = :stopped
           @ppp_pid = nil
           @shutdown = false
+          @account = nil
 
           logpipe_smartware, @logpipe_ppp = IO.pipe
           EventMachine.attach logpipe_smartware, LogConnection, self

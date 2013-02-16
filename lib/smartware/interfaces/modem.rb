@@ -6,6 +6,8 @@ module Smartware
       def initialize(config, service)
         super
 
+        @device.account = method(:account)
+
         update_status :balance, ''
         update_status :signal_level, ''
 
@@ -37,6 +39,12 @@ module Smartware
           Smartware::Logging.logger.error e.message
           Smartware::Logging.logger.error e.backtrace.join("\n")
         end
+      end
+
+      def account(sent, received, time)
+        Smartware::Logging.logger.debug "recording session: #{sent} upstream #{received} downstream, #{time} seconds"
+
+        publish_reliable_event 'accounting', sent, received, time
       end
     end
   end
