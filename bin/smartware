@@ -21,11 +21,11 @@ begin
 
   Smartware::Logging.logger.info "Initializing Smartware"
 
+  [ 'INT', 'TERM' ].each do |sig|
+    trap(sig) { service.stop }
+  end
+
   service.start
-
-  Smartware::Logging.logger.info "Smartware ready"
-
-  service.join
 rescue => e
   Smartware::Logging.logger.error e.message
   Smartware::Logging.logger.error e.backtrace.join("\n")

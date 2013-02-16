@@ -6,6 +6,20 @@ module Smartware
     module Modem
 
       class Standard
+        class LogConnection < EventMachine::Connection
+          include EventMachine::Protocols::LineProtocol
+
+          def initialize(device)
+            @device = device
+          end
+
+          def receive_line(line)
+            line.rstrip!
+
+            Logging.logger.debug "pppd: #{line}"
+          end
+        end
+
         attr_reader :error, :model, :balance, :version
 
         def initialize(config)
@@ -29,6 +43,24 @@ module Smartware
           @balance = nil
           @ppp_state = :stopped
           @ppp_pid = nil
+          @shutdown = false
+
+          logpipe_smartware, @logpipe_ppp = IO.pipe
+          EventMachine.attach logpipe_smartware, LogConnection, self
+        end
+
+        def shutdown(callback)
+          @shutdown_callback = callback
+
+          Logging.logger.info "stopping modem gracefully"
+          @shutdown = true
+          @shutdown_timer = EventMachine.add_periodic_timer(0.5) do
+            if @state == :closed && @ppp_state == :stopped
+              Logging.logger.info "modem stopped"
+              EventMachine.cancel_timer @shutdown_timer
+              @shutdown_callback.call
+            end
+          end
         end
 
         def signal_level
@@ -43,7 +75,7 @@ module Smartware
 
             wait_for_event
           rescue => e
-            Smartware::Logging.logger.error "uncatched exception in modem monitor: #{e}"
+            Logging.logger.error "uncatched exception in modem monitor: #{e}"
           end
         end
 
@@ -56,7 +88,7 @@ module Smartware
 
         def ussd(mode, string = nil, dcs = nil)
           if mode != "0"
-            Smartware::Logging.logger.warn "USSD completed with mode #{mode}, expected 0"
+            Logging.logger.warn "USSD completed with mode #{mode}, expected 0"
           end
 
           if string
@@ -74,19 +106,21 @@ module Smartware
         def modem_tick
           case @state
           when :closed
-            Smartware::Logging.logger.info "trying to open modem"
+            if !@shutdown
+              Logging.logger.info "trying to open modem"
 
-            begin
-              @mux = CMUX::MUX.new @port
-              @state = :open
-              @status_channel = @mux.allocate(@status_channel_id).open
-              @chatter = CMUX::ModemChatter.new @status_channel
-              @chatter.subscribe "CUSD", self
-              @error = nil
-              @balance_timer = 0
-              Smartware::Logging.logger.info "modem ready"
-            rescue => e
-              close_modem "unable to open modem: #{e}"
+              begin
+                @mux = CMUX::MUX.new @port
+                @state = :open
+                @status_channel = @mux.allocate(@status_channel_id).open
+                @chatter = CMUX::ModemChatter.new @status_channel
+                @chatter.subscribe "CUSD", self
+                @error = nil
+                @balance_timer = 0
+                Logging.logger.info "modem ready"
+              rescue => e
+                close_modem "unable to open modem: #{e}"
+              end
             end
 
           when :open
@@ -110,7 +144,9 @@ module Smartware
             end
 
             if modem_works
-              if !@balance_ussd.nil? && @balance_timer == 0
+              if @shutdown && @ppp_state == :stopped
+                close_modem "service shutdown"
+              elsif !@balance_ussd.nil? && @balance_timer == 0
                 @balance_timer = @balance_interval
                 begin
                   @chatter.command("+CUSD=1,\"#{@balance_ussd}\",15", 1)
@@ -129,43 +165,45 @@ module Smartware
         def ppp_tick
           case @ppp_state
           when :stopped
-            if @state == :open
-              Smartware::Logging.logger.info "trying to start pppd"
+            if @state == :open && !@shutdown
+              Logging.logger.info "trying to start pppd"
               begin
                 @ppp_channel = @mux.allocate @ppp_channel_id
 
                 @ppp_pid = Process.spawn "smartware-ppp-helper",
                     @ppp_channel.device,
-                    @apn
+                    @apn,
+                    err: @logpipe_ppp
                 @ppp_state = :running
 
-                Smartware::Logging.logger.info "started pppd, PID #{@ppp_pid}"
-                Smartware::ProcessManager.track @ppp_pid, method(:ppp_died)
+                Logging.logger.info "started pppd, PID #{@ppp_pid}"
+                ProcessManager.track @ppp_pid, method(:ppp_died)
 
               rescue => e
-                begin
-                  @ppp_channel.close
-                rescue
-                end
+                @ppp_channel.close rescue nil
 
                 @ppp_channel = nil
                 @ppp_pid = nil
                 @ppp_state = :stopped
 
-                Smartware::Logging.logger.warn "cannot start pppd: #{e.to_s}"
+                Logging.logger.warn "cannot start pppd: #{e.to_s}"
               end
             end
 
           when :running
             if @ppp_pid.nil?
-              Smartware::Logging.logger.warn "pppd died"
-              begin
-                @ppp_channel.close
-              rescue
-              end
+              Logging.logger.warn "pppd died"
+              @ppp_channel.close rescue nil
 
               @ppp_channel = nil
               @ppp_state = :stopped
+            elsif @shutdown
+              Logging.logger.debug "Terminating pppd #{@ppp_pid}"
+              if Process.euid == 0
+                Process.kill 'TERM', @ppp_pid
+              else
+                system "sudo", "kill", "-TERM", @ppp_pid.to_s
+              end
             end
           end
         end
@@ -189,19 +227,12 @@ module Smartware
         end
 
         def close_modem(reason)
-          Smartware::Logging.logger.warn "#{reason}"
+          Logging.logger.warn "#{reason}"
 
           @error = Interface::Modem::MODEM_NOT_AVAILABLE
 
-          begin
-            @mux.close
-          rescue
-          end
-
-          begin
-            @chatter.unsubscribe "CUSD", self
-          rescue
-          end
+          @mux.close rescue nil
+          @chatter.unsubscribe "CUSD", self rescue nil
 
           @info_requested = false
           @mux = nil
@@ -209,7 +240,7 @@ module Smartware
           @status_channel = nil
           @ppp_state = :stopped
           unless @ppp_pid.nil?
-            Smartware::ProcessManager.untrack @ppp_pid
+            ProcessManager.untrack @ppp_pid
             @ppp_pid = nil # PPP will die by itself, because we closed the mux.
           end
           @state = :closed

@@ -26,6 +26,16 @@ module Smartware
                                    .new(config)
       end
 
+      def shutdown(callback)
+        if @device.respond_to? :shutdown
+          @device.shutdown callback
+
+          true
+        else
+          false
+        end
+      end
+
       def repush_events(connection)
         @status_mutex.synchronize do
           @status.each do |key, value|

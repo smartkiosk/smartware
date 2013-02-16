@@ -29,11 +29,16 @@ ensure
   io.close
 end
 
-Process.exec "/usr/sbin/pppd",
-              device, "115200",
-              "nodetach", "file", "/etc/ppp/options",
+cmdline = [
+  "/usr/sbin/pppd", device, "115200",
+  "nodetach", "logfd", "2", "file", "/etc/ppp/options"
+]
+
+cmdline.unshift "sudo" if Process.euid != 0
+
+Process.exec *cmdline,
               pgroup: true,
               in: :close,
               out: :close,
-              err: :close,
+              err: :err,
               close_others: true

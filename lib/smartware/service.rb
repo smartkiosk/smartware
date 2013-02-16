@@ -6,6 +6,7 @@ module Smartware
       @config = YAML.load File.read(config_file)
       @interfaces = []
       @devices = []
+      @shutdown_holders = 0
     end
 
     def start
@@ -54,13 +55,23 @@ module Smartware
     def stop
       @interfaces.each &:stop_service
 
-      EventMachine.stop
+      callback = method :decr_shutdown_holders
+
+      @devices.each do |interface|
+        if interface.shutdown callback
+          @shutdown_holders += 1
+        end
+      end
+
+      EventMachine.stop if @shutdown_holders == 0
     end
 
-    def join
-      @interfaces.each do |server|
-        server.thread.join
-      end
+    private
+
+    def decr_shutdown_holders
+      @shutdown_holders -= 1
+
+      EventMachine.stop if @shutdown_holders == 0
     end
   end
 end

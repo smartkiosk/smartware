@@ -10,7 +10,6 @@ module Smartware
         update_status :signal_level, ''
 
         @session = Thread.new &method(:poll)
-        Smartware::Logging.logger.info 'Modem monitor started'
       end
 
       def balance
