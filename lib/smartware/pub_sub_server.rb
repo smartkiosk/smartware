@@ -60,7 +60,7 @@ module Smartware
       @redis.hgetall("smartware:reliable_events").each do |key, data|
         data = JSON.load(data)
 
-        connection.publish_reliable_event key, data["key"], data["args"]
+        connection.publish_reliable_event key, data["key"], *data["args"]
       end
     end
 

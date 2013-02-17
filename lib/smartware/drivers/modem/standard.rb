@@ -19,7 +19,7 @@ module Smartware
             Logging.logger.debug "pppd: #{line}"
 
             case line
-            when /authentication succeeded$/
+            when /^remote IP address/
               @started = Time.now.to_i
 
             when /^Sent ([0-9]+) bytes, received ([0-9]+) bytes.$/
