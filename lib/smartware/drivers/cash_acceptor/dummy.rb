@@ -99,7 +99,7 @@ module Smartware
 
           when :returning
             @dummy_state = :idle
-            @return.call @escrow_bill
+            @returned.call @escrow_bill
 
           when :no_casette
             error = Interface::CashAcceptor::DROP_CASETTE_OUT_OF_POSITION
