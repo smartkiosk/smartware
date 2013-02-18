@@ -29,7 +29,9 @@ module Smartware
     protected
 
     def check_dsr!
-      if @io.dsr == 0
+      dsr = @io.dsr != 0 rescue true
+
+      if !dsr
         if @ready_for_commands
           Logging.logger.debug "SZZT: DSR low detected"
 

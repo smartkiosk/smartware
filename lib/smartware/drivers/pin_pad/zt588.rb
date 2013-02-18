@@ -62,10 +62,11 @@ module Smartware
         }
 
         # Authentication data
-        UID = "0000000000000000"
+        UID = "\x11" * 8
 
         # Keys
-        KEY_TMK = 0x00
+        KEY_TMK = 0x20
+        KEY_TPK = 0x30
         KEY_IMK = 0x80
 
         # Key types, etc
@@ -192,11 +193,11 @@ module Smartware
             control MISC, ENABLE_INPUT
 
           when Interface::PinPad::INPUT_PIN
-            tpk = 0x40 + 8 * options[:key_set]
+            raise "unsupported key set" unless options[:key_set] == 0
             @plain_input = false
             @auto_stop = options[:length]
 
-            start_pin_input tpk, options[:format], 0, options[:length],
+            start_pin_input KEY_TPK, options[:format], 0, options[:length],
                             options[:pan]
 
           else
@@ -211,6 +212,27 @@ module Smartware
           @input_event.call :cancel
         end
 
+        def load_working_keys(set, tpk_under_tmk)
+          raise "unsupported key set" unless set == 0
+
+          tpk_verify = load_encrypted_key KEY_TPK, KEY_TMK, KEY_TYPE_TPK, nil,
+                                          tpk_under_tmk
+
+          return tpk_verify
+        end
+
+        def get_pin
+          response = safe_command GET_PIN_VALUE
+
+          [
+            response.slice(1, 2).to_i, # Track
+            response.slice(3, 2).to_i, # Length
+            bin(response[5..-1])       # Block
+          ]
+        end
+
+        private
+
         def start_pin_input(key, format, hint_code, length, pan)
           raise "unsupported PIN block format" unless PIN_TYPE_MAP.include? format
 
@@ -222,30 +244,6 @@ module Smartware
                                length,
                                pan))
         end
-
-        def load_working_keys(set, tpk_under_tmk)
-          raise "unsupported key set" unless (0..7).include? set
-
-          tpk = 0x40 + 8 * set
-          tpk_verify = load_encrypted_key tpk, KEY_TMK, KEY_TYPE_TPK, nil,
-                                          tpk_under_tmk
-
-          return tpk_verify
-        end
-
-        def get_pin
-          response = safe_command GET_PIN_VALUE
-
-          p response
-
-          [
-            response.slice(1, 2).to_i, # Track
-            response.slice(3, 2).to_i, # Length
-            bin(response[5..-1])       # Block
-          ]
-        end
-
-        private
 
         def calculate_response(challenge, key)
           cipher = OpenSSL::Cipher.new('DES-ECB')
@@ -272,7 +270,7 @@ module Smartware
             KEY_LENGTH_TRIPLE
 
           else
-            raise "unsupported key length: #{data.bytes}"
+            raise "unsupported key length: #{data.length}"
           end
         end
 
@@ -406,21 +404,14 @@ module Smartware
               restart
 =end
             else
-              [0x10, 0x20, 0x30].each do |key|
-                p key
-                begin
-                  random    = auth AUTH_GET_CHALLENGE, "0000000000000000"
-                  challenge = auth key, random
-                  response  = calculate_response challenge, UID
-                  check     = calculate_response response, UID
-                  verify    = auth AUTH_WITH_TMK, response
-                  raise ZT588Error, "verification failed" if check != verify
-                  Logging.logger.debug "ZT588: authenticated"
-
-                  break
-                rescue => e
-                  p e
-                end
+              begin
+                random    = auth AUTH_GET_CHALLENGE, "0000000000000000"
+                challenge = auth KEY_TMK, random
+                response  = calculate_response challenge, UID
+                check     = calculate_response response, UID
+                verify    = auth AUTH_WITH_TMK, response
+                raise ZT588Error, "verification failed" if check != verify
+                Logging.logger.debug "ZT588: authenticated"
               end
 
               @device_ready.call
