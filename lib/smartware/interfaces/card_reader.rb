@@ -113,10 +113,13 @@ module Smartware
             end
           end
         rescue CardReaderError => e
-          Logging.logger.error "Card reader error: #{e}"
+          Logging.logger.error "Card reader error: #{e}" unless @state == :failure
 
-          @device.eject rescue nil
-          @device.accepting = false rescue nil
+          begin
+            @device.eject
+            @device.accepting = false
+          rescue CardReaderError => e
+          end
 
           @state = :failure
           update_status :error, e.code
